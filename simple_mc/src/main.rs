@@ -1,6 +1,9 @@
-use std::time::{Duration, Instant};
+use std::{
+    io::stdin,
+    time::{Duration, Instant},
+};
 
-use proconio::input;
+use proconio::{input, source::once::OnceSource};
 use rand::{
     distributions::{Distribution, Uniform},
     RngCore,
@@ -119,10 +122,22 @@ impl Rect {
     }
 }
 
+fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
+    rects
+        .iter()
+        .enumerate()
+        .any(|(j, rect)| i != j && new.intersect(rect))
+}
+
 fn main() {
     let now = Instant::now();
     const TIME_LIMIT: Duration = Duration::from_millis(4950);
+
+    // let stdin = stdin();
+    let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
+    let source = OnceSource::new(f);
     input! {
+        from source,
         n: usize,
         xyr: [(i32, i32, i32); n],
     }
@@ -181,7 +196,7 @@ fn main() {
                 if !new.contain(xyr[i].0, xyr[i].1) {
                     continue;
                 }
-                if (0..n).any(|j| i != j && new.intersect(&rects[j])) {
+                if intersect(&new, i, &rects) {
                     continue;
                 }
                 let new_score = new.score(xyr[i].2);
