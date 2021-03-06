@@ -40,10 +40,10 @@ impl Rect {
     }
 
     pub fn round(&self) -> String {
-        let top_left_x = self.x.ceil() as i32;
-        let top_left_y = self.y.ceil() as i32;
-        let bottom_right_x = (self.x + self.width).floor() as i32;
-        let bottom_right_y = (self.y + self.height).floor() as i32;
+        let top_left_x = (self.x - self.width * 0.5).ceil() as i32;
+        let top_left_y = (self.y - self.height * 0.5).ceil() as i32;
+        let bottom_right_x = (self.x + self.width * 0.5).floor() as i32;
+        let bottom_right_y = (self.y + self.height * 0.5).floor() as i32;
         format!(
             "{} {} {} {}",
             top_left_x, top_left_y, bottom_right_x, bottom_right_y,
@@ -51,11 +51,11 @@ impl Rect {
     }
 
     pub fn gx(&self) -> f64 {
-        self.x + self.width * 0.5
+        self.x
     }
 
     pub fn gy(&self) -> f64 {
-        self.y + self.height * 0.5
+        self.y
     }
 
     pub fn area(&self) -> f64 {

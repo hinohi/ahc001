@@ -20,13 +20,8 @@ fn main() {
     let mut rng = SmallRng::seed_from_u64(1);
     let mut rects = Vec::with_capacity(n);
     for &(x, y, r) in xyr.iter() {
-        let l = r.sqrt();
-        rects.push(Rect::new(
-            x - rng.gen_range(0.0, l),
-            y - rng.gen_range(0.0, l),
-            l,
-            l,
-        ));
+        let l = 2.0;
+        rects.push(Rect::new(x - l / 2.0, y - l / 2.0, l, l));
     }
 
     let factor = 1.0 / 512.0;
