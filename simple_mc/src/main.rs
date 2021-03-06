@@ -1,7 +1,10 @@
 use std::time::{Duration, Instant};
 
 use proconio::input;
-use rand::{Rng, RngCore};
+use rand::{
+    distributions::{Distribution, Uniform},
+    Rng, RngCore,
+};
 use rand_pcg::Mcg128Xsl64;
 
 const L: i32 = 10_000;
@@ -144,10 +147,13 @@ fn main() {
         scores.push(s);
     }
 
+    let move_d = Uniform::new(-2, 2 + 1);
+    let grow_d = Uniform::new(-8, 8 + 1);
+
     let mut best = rects.clone();
     let mut best_score = score;
-    let temp0: f64 = 100.0;
-    let temp1: f64 = 1.0;
+    let temp0: f64 = 1.0;
+    let temp1: f64 = 0.0001;
     let mut rng = Mcg128Xsl64::new(1);
     while now.elapsed() < TIME_LIMIT {
         let t = (TIME_LIMIT - now.elapsed()).as_secs_f64() / TIME_LIMIT.as_secs_f64();
@@ -158,12 +164,12 @@ fn main() {
         for _ in 0..1000 {
             let i = (rng.next_u32() % n as u32) as usize;
             let new = match rng.next_u32() % 6 {
-                0 => rects[i].move_x(rng.gen_range(-4, 5)),
-                1 => rects[i].move_y(rng.gen_range(-4, 5)),
-                2 => rects[i].grow_x1(rng.gen_range(-4, 5)),
-                3 => rects[i].grow_x2(rng.gen_range(-4, 5)),
-                4 => rects[i].grow_y1(rng.gen_range(-4, 5)),
-                5 => rects[i].grow_y2(rng.gen_range(-4, 5)),
+                0 => rects[i].move_x(move_d.sample(&mut rng)),
+                1 => rects[i].move_y(move_d.sample(&mut rng)),
+                2 => rects[i].grow_x1(grow_d.sample(&mut rng)),
+                3 => rects[i].grow_x2(grow_d.sample(&mut rng)),
+                4 => rects[i].grow_y1(grow_d.sample(&mut rng)),
+                5 => rects[i].grow_y2(grow_d.sample(&mut rng)),
                 _ => unreachable!(),
             };
             if let Some(new) = new {
