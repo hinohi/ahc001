@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use proconio::input;
 use rand::{
     distributions::{Distribution, Uniform},
-    Rng, RngCore,
+    RngCore,
 };
 use rand_pcg::Mcg128Xsl64;
 
@@ -149,6 +149,7 @@ fn main() {
 
     let move_d = Uniform::new(-2, 2 + 1);
     let grow_d = Uniform::new(-8, 8 + 1);
+    let prob_d = Uniform::new(0.0, 1.0);
 
     let mut best = rects.clone();
     let mut best_score = score;
@@ -185,7 +186,7 @@ fn main() {
                 }
                 let new_score = new.score(xyr[i].2);
                 let score_diff = new_score - scores[i];
-                if score_diff >= 0.0 || rng.gen_bool((score_diff * beta).exp()) {
+                if score_diff >= 0.0 || prob_d.sample(&mut rng) < (score_diff * beta).exp() {
                     scores[i] = new_score;
                     rects[i] = new;
                     score += score_diff;
