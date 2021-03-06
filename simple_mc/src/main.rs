@@ -121,7 +121,7 @@ impl Rect {
 
 fn main() {
     let now = Instant::now();
-    const TIME_LIMIT: Duration = Duration::from_millis(4900);
+    const TIME_LIMIT: Duration = Duration::from_millis(4950);
     input! {
         n: usize,
         xyr: [(i32, i32, i32); n],
@@ -155,8 +155,12 @@ fn main() {
     let temp0: f64 = 1.0;
     let temp1: f64 = 0.0001;
     let mut rng = Mcg128Xsl64::new(1);
-    while now.elapsed() < TIME_LIMIT {
-        let t = (TIME_LIMIT - now.elapsed()).as_secs_f64() / TIME_LIMIT.as_secs_f64();
+    loop {
+        let elapsed = now.elapsed();
+        if elapsed > TIME_LIMIT {
+            break;
+        }
+        let t = (TIME_LIMIT - elapsed).as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (temp0.powf(1.0 - t) * temp1.powf(t));
 
         score = scores.iter().fold(0.0, |x, y| x + *y);
