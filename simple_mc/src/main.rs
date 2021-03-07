@@ -93,6 +93,9 @@ impl QTree {
     }
 
     fn intersect_one_grid(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
+        if gid as usize >= self.grid.len() {
+            eprintln!("{} {:?} {}", gid, new, i);
+        }
         self.grid[gid as usize]
             .iter()
             .any(|&j| i != j && new.intersect(&rects[j]))
@@ -155,7 +158,7 @@ impl QTree {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Rect {
     pub x1: i16,
     pub x2: i16,
@@ -188,7 +191,7 @@ impl Rect {
     }
 
     pub fn move_x(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || L < self.x2 + d {
+        if self.x1 + d < 0 || L <= self.x2 + d {
             None
         } else {
             Some(Rect {
@@ -201,7 +204,7 @@ impl Rect {
     }
 
     pub fn move_y(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || L < self.y2 + d {
+        if self.y1 + d < 0 || L <= self.y2 + d {
             None
         } else {
             Some(Rect {
@@ -227,7 +230,7 @@ impl Rect {
     }
 
     pub fn grow_x2(&self, d: i16) -> Option<Rect> {
-        if self.x2 + d <= self.x1 || L < self.x2 + d {
+        if self.x2 + d <= self.x1 || L <= self.x2 + d {
             None
         } else {
             Some(Rect {
@@ -251,8 +254,9 @@ impl Rect {
             })
         }
     }
+
     pub fn grow_y2(&self, d: i16) -> Option<Rect> {
-        if self.y2 + d <= self.y1 || L < self.y2 + d {
+        if self.y2 + d <= self.y1 || L <= self.y2 + d {
             None
         } else {
             Some(Rect {
@@ -262,6 +266,42 @@ impl Rect {
                 y2: self.y2 + d,
             })
         }
+    }
+
+    pub fn grow_rect(&self, new: &Rect) -> Option<Rect> {
+        if self.x1 > new.x1 {
+            return Some(Rect {
+                x1: new.x1,
+                x2: self.x1,
+                y1: new.y1,
+                y2: new.y2,
+            });
+        }
+        if self.y1 > new.y1 {
+            return Some(Rect {
+                x1: new.x1,
+                x2: new.x2,
+                y1: new.y1,
+                y2: self.y1,
+            });
+        }
+        if self.x2 < new.x2 {
+            return Some(Rect {
+                x1: self.x2,
+                x2: new.x2,
+                y1: new.y1,
+                y2: new.y2,
+            });
+        }
+        if self.y2 < new.y2 {
+            return Some(Rect {
+                x1: new.x1,
+                x2: new.x2,
+                y1: self.y2,
+                y2: new.y2,
+            });
+        }
+        None
     }
 }
 
@@ -367,14 +407,14 @@ fn mc(
             _ => unreachable!(),
         };
         let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
-            0 => (rect.grow_x1(grow_d1.sample(rng)), false),
-            1 => (rect.grow_x1(-grow_d1.sample(rng)), true),
-            2 => (rect.grow_x2(grow_d1.sample(rng)), true),
-            3 => (rect.grow_x2(-grow_d1.sample(rng)), false),
-            4 => (rect.grow_y1(grow_d1.sample(rng)), false),
-            5 => (rect.grow_y1(-grow_d1.sample(rng)), true),
-            6 => (rect.grow_y2(grow_d1.sample(rng)), true),
-            7 => (rect.grow_y2(-grow_d1.sample(rng)), false),
+            0 => rect.grow_x1(grow_d1.sample(rng)),
+            1 => rect.grow_x1(-grow_d1.sample(rng)),
+            2 => rect.grow_x2(grow_d1.sample(rng)),
+            3 => rect.grow_x2(-grow_d1.sample(rng)),
+            4 => rect.grow_y1(grow_d1.sample(rng)),
+            5 => rect.grow_y1(-grow_d1.sample(rng)),
+            6 => rect.grow_y2(grow_d1.sample(rng)),
+            7 => rect.grow_y2(-grow_d1.sample(rng)),
             _ => unreachable!(),
         };
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
@@ -410,10 +450,10 @@ fn mc(
         for _ in 0..1000 {
             let i = (rng.next_u32() % rects.len() as u32) as usize;
             let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
-            let (new, need) = match w {
-                MoveType::Move => (rect_move(rng, &rects[i]), true),
+            let new = match w {
+                MoveType::Move => rect_move(rng, &rects[i]),
                 MoveType::Grow1 => rect_grow_d1(rng, &rects[i]),
-                MoveType::Grow2 => (rect_grow_d2(rng, &rects[i]), true),
+                MoveType::Grow2 => rect_grow_d2(rng, &rects[i]),
             };
             if let Some(new) = new {
                 if !new.contain(target[i].0, target[i].1) {
@@ -422,10 +462,11 @@ fn mc(
                 let new_score = new.score(size[i]);
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                    if need && qtree.intersect(&new, i, &rects) {
-                        continue;
+                    if let Some(grow) = rects[i].grow_rect(&new) {
+                        if qtree.intersect(&grow, i, &rects) {
+                            continue;
+                        }
                     }
-
                     qtree.update(&new, &rects[i], i);
                     scores[i] = new_score;
                     rects[i] = new;
