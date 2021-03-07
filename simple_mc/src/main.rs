@@ -11,10 +11,9 @@ use rand::{
 use rand_pcg::Mcg128Xsl64;
 
 const L: i16 = 10_000;
-const Q_MIN: i16 = L / 2 / 2 / 2;
+const Q_MIN: i16 = L / 2 / 2;
 const LAYER1_OFFSET: u8 = (4 - 1) / 3;
 const LAYER2_OFFSET: u8 = (4 * 4 - 1) / 3;
-const LAYER3_OFFSET: u8 = (4 * 4 * 4 - 1) / 3;
 
 /// 最大4bitの情報がある n を受け取る
 /// 00 00 ab cd
@@ -40,19 +39,14 @@ fn point_to_leaf_gid(x: i16, y: i16) -> u8 {
 
 fn leaf_leaf_to_gid(i: u8, j: u8) -> u8 {
     let mut n = i ^ j;
-    // layer 3
-    if n == 0 {
-        return LAYER3_OFFSET + j;
-    }
     // layer 2
-    n >>= 2;
     if n == 0 {
-        return LAYER2_OFFSET + (j >> 2);
+        return LAYER2_OFFSET + j;
     }
     // layer 1
     n >>= 2;
     if n == 0 {
-        return LAYER1_OFFSET + (j >> 4);
+        return LAYER1_OFFSET + (j >> 2);
     }
     // layer 0 = root
     0
@@ -66,9 +60,6 @@ pub fn get_gid(rect: &Rect) -> u8 {
 }
 
 pub fn parent_gid(gid: u8) -> u8 {
-    if gid >= LAYER3_OFFSET {
-        return LAYER2_OFFSET + (gid - LAYER3_OFFSET) / 4;
-    }
     if gid >= LAYER2_OFFSET {
         return LAYER1_OFFSET + (gid - LAYER2_OFFSET) / 4;
     }
@@ -76,14 +67,8 @@ pub fn parent_gid(gid: u8) -> u8 {
 }
 
 pub fn children_gid_range(gid: u8) -> std::ops::Range<u8> {
-    // gid == 0 と gid >= LAYER3_OFFSET はこない
-    if gid < LAYER2_OFFSET {
-        let start = (gid - LAYER1_OFFSET) * 4 + LAYER2_OFFSET;
-        let end = (gid - LAYER1_OFFSET + 1) * 4 + LAYER2_OFFSET;
-        return start..end;
-    }
-    let start = (gid - LAYER2_OFFSET) * 4 + LAYER3_OFFSET;
-    let end = (gid - LAYER2_OFFSET + 1) * 4 + LAYER3_OFFSET;
+    let start = (gid - LAYER1_OFFSET) * 4 + LAYER2_OFFSET;
+    let end = (gid - LAYER1_OFFSET + 1) * 4 + LAYER2_OFFSET;
     return start..end;
 }
 
@@ -94,7 +79,7 @@ pub struct QTree {
 
 impl QTree {
     pub fn new(rects: &[Rect]) -> QTree {
-        const N: usize = 1 + 4 + 4 * 4 + 4 * 4 * 4;
+        const N: usize = 1 + 4 + 4 * 4;
         let mut grid = Vec::with_capacity(N);
         for _ in 0..N {
             grid.push(Vec::new());
@@ -125,7 +110,7 @@ impl QTree {
     }
 
     pub fn intersect_to_children(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
-        if gid >= LAYER3_OFFSET {
+        if gid >= LAYER2_OFFSET {
             return false;
         }
         let mut queue = VecDeque::new();
@@ -135,7 +120,7 @@ impl QTree {
                 if self.intersect_one_grid(c, new, i, rects) {
                     return true;
                 }
-                if c < LAYER3_OFFSET {
+                if c < LAYER2_OFFSET {
                     queue.push_back(children_gid_range(c));
                 }
             }
@@ -467,6 +452,6 @@ mod tests {
     #[test]
     fn test_point_to_leaf_gid() {
         assert_eq!(point_to_leaf_gid(0, 0), 0);
-        assert_eq!(point_to_leaf_gid(L - 1, L - 1), 4 * 4 * 4 - 1);
+        assert_eq!(point_to_leaf_gid(L - 1, L - 1), 4 * 4 - 1);
     }
 }
