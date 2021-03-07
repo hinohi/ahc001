@@ -304,7 +304,6 @@ fn mc(
     }
 
     let move_d = Uniform::new(1, 2 + 1);
-    let grow_d = Uniform::new(1, 8 + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut qtree = QTree::new(rects);
@@ -323,12 +322,13 @@ fn mc(
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (temp0.powf(1.0 - t) * temp1.powf(t));
+        let grow_d = Uniform::new(1, (256.0 * (1.0 - t)) as i16 + 4);
 
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
             let i = (rng.next_u32() % rects.len() as u32) as usize;
-            let (new, need) = match rng.next_u32() % 12 {
+            let (new, need) = match rng.next_u32() % 20 {
                 0 => (rects[i].move_x(move_d.sample(rng)), true),
                 1 => (rects[i].move_x(-move_d.sample(rng)), true),
                 2 => (rects[i].move_y(move_d.sample(rng)), true),
@@ -341,6 +341,54 @@ fn mc(
                 9 => (rects[i].grow_y1(-grow_d.sample(rng)), true),
                 10 => (rects[i].grow_y2(grow_d.sample(rng)), true),
                 11 => (rects[i].grow_y2(-grow_d.sample(rng)), false),
+                12 => (
+                    rects[i]
+                        .grow_x1(grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y1(-grow_d.sample(rng))),
+                    true,
+                ),
+                13 => (
+                    rects[i]
+                        .grow_x1(-grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y1(grow_d.sample(rng))),
+                    true,
+                ),
+                14 => (
+                    rects[i]
+                        .grow_x1(grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y2(grow_d.sample(rng))),
+                    true,
+                ),
+                15 => (
+                    rects[i]
+                        .grow_x1(-grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y2(-grow_d.sample(rng))),
+                    true,
+                ),
+                16 => (
+                    rects[i]
+                        .grow_x2(grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y1(grow_d.sample(rng))),
+                    true,
+                ),
+                17 => (
+                    rects[i]
+                        .grow_x2(-grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y1(-grow_d.sample(rng))),
+                    true,
+                ),
+                18 => (
+                    rects[i]
+                        .grow_x2(grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y2(-grow_d.sample(rng))),
+                    true,
+                ),
+                19 => (
+                    rects[i]
+                        .grow_x2(-grow_d.sample(rng))
+                        .and_then(|rect| rect.grow_y2(grow_d.sample(rng))),
+                    true,
+                ),
                 _ => unreachable!(),
             };
             if let Some(new) = new {
