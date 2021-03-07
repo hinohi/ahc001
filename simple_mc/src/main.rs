@@ -129,12 +129,19 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
         .any(|(j, rect)| i != j && new.intersect(rect))
 }
 
+enum IntersectDirection {
+    X,
+    Y,
+    None,
+}
+
 fn main() {
     let now = Instant::now();
     const TIME_LIMIT: Duration = Duration::from_millis(4950);
 
-    // let stdin = stdin();
-    let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
+    let stdin = stdin();
+    let f = stdin.lock();
+    // let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
     let source = OnceSource::new(f);
     input! {
         from source,
@@ -162,8 +169,8 @@ fn main() {
         scores.push(s);
     }
 
-    let move_d = Uniform::new(-2, 2 + 1);
-    let grow_d = Uniform::new(-8, 8 + 1);
+    let move_d = Uniform::new(1, 2 + 1);
+    let grow_d = Uniform::new(1, 8 + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut best = rects.clone();
@@ -176,27 +183,73 @@ fn main() {
         if elapsed > TIME_LIMIT {
             break;
         }
-        let t = (TIME_LIMIT - elapsed).as_secs_f64() / TIME_LIMIT.as_secs_f64();
+        let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (temp0.powf(1.0 - t) * temp1.powf(t));
 
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
             let i = (rng.next_u32() % n as u32) as usize;
-            let new = match rng.next_u32() % 6 {
-                0 => rects[i].move_x(move_d.sample(&mut rng)),
-                1 => rects[i].move_y(move_d.sample(&mut rng)),
-                2 => rects[i].grow_x1(grow_d.sample(&mut rng)),
-                3 => rects[i].grow_x2(grow_d.sample(&mut rng)),
-                4 => rects[i].grow_y1(grow_d.sample(&mut rng)),
-                5 => rects[i].grow_y2(grow_d.sample(&mut rng)),
+            let (new, id) = match rng.next_u32() % 12 {
+                0 => (
+                    rects[i].move_x(move_d.sample(&mut rng)),
+                    IntersectDirection::X,
+                ),
+                1 => (
+                    rects[i].move_x(-move_d.sample(&mut rng)),
+                    IntersectDirection::X,
+                ),
+                2 => (
+                    rects[i].move_y(move_d.sample(&mut rng)),
+                    IntersectDirection::Y,
+                ),
+                3 => (
+                    rects[i].move_y(-move_d.sample(&mut rng)),
+                    IntersectDirection::Y,
+                ),
+                4 => (
+                    rects[i].grow_x1(grow_d.sample(&mut rng)),
+                    IntersectDirection::None,
+                ),
+                5 => (
+                    rects[i].grow_x1(-grow_d.sample(&mut rng)),
+                    IntersectDirection::X,
+                ),
+                6 => (
+                    rects[i].grow_x2(grow_d.sample(&mut rng)),
+                    IntersectDirection::X,
+                ),
+                7 => (
+                    rects[i].grow_x2(-grow_d.sample(&mut rng)),
+                    IntersectDirection::None,
+                ),
+                8 => (
+                    rects[i].grow_y1(grow_d.sample(&mut rng)),
+                    IntersectDirection::None,
+                ),
+                9 => (
+                    rects[i].grow_y1(-grow_d.sample(&mut rng)),
+                    IntersectDirection::Y,
+                ),
+                10 => (
+                    rects[i].grow_y2(grow_d.sample(&mut rng)),
+                    IntersectDirection::Y,
+                ),
+                11 => (
+                    rects[i].grow_y2(-grow_d.sample(&mut rng)),
+                    IntersectDirection::None,
+                ),
                 _ => unreachable!(),
             };
             if let Some(new) = new {
                 if !new.contain(xyr[i].0, xyr[i].1) {
                     continue;
                 }
-                if intersect(&new, i, &rects) {
+                let intersected = match id {
+                    IntersectDirection::X | IntersectDirection::Y => intersect(&new, i, &rects),
+                    IntersectDirection::None => false,
+                };
+                if intersected {
                     continue;
                 }
                 let new_score = new.score(xyr[i].2);
