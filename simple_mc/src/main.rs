@@ -9,6 +9,7 @@ use rand::{
     RngCore,
 };
 use rand_pcg::Mcg128Xsl64;
+use serde::Deserialize;
 
 const L: i16 = 10_000;
 const Q_MIN: i16 = L / 2 / 2;
@@ -271,14 +272,15 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
         .any(|(j, rect)| i != j && new.intersect(rect))
 }
 
+#[derive(Debug, Deserialize)]
 pub struct McParams {
     temp0: f64,
     temp1: f64,
     move_d_max: i16,
-    grow_d1_max: f64,
-    grow_d1_exp: f64,
-    grow_d2_max: f64,
-    grow_d2_exp: f64,
+    grow_d1_start: f64,
+    grow_d1_end: f64,
+    grow_d2_start: f64,
+    grow_d2_end: f64,
     rect_move_weight: f64,
     rect_grow_d1_weight: f64,
     rect_grow_d2_weight: f64,
@@ -302,7 +304,7 @@ fn mc(
         scores.push(s);
     }
 
-    #[derive(Copy, Clone)]
+    #[derive(Debug, Copy, Clone)]
     enum MoveType {
         Move,
         Grow1,
@@ -313,8 +315,8 @@ fn mc(
         let s = params.rect_move_weight + params.rect_grow_d1_weight + params.rect_grow_d2_weight;
         let mut weight = [MoveType::Move; 128];
         let a = (params.rect_move_weight * weight.len() as f64 / s).ceil() as usize;
-        let b = (params.rect_grow_d1_weight * weight.len() as f64 / s).ceil() as usize;
-        let c = (params.rect_grow_d2_weight * weight.len() as f64 / s).ceil() as usize;
+        let b = a + (params.rect_grow_d1_weight * weight.len() as f64 / s).ceil() as usize;
+        let c = b + (params.rect_grow_d2_weight * weight.len() as f64 / s).ceil() as usize;
         for i in 0..a {
             if i < weight.len() {
                 weight[i] = MoveType::Move;
@@ -343,9 +345,6 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            // for (g, grid) in qtree.grid.iter().enumerate() {
-            //     eprintln!("{} {:?}", g, grid);
-            // }
             break (best_score, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
@@ -353,11 +352,11 @@ fn mc(
 
         let grow_d1 = Uniform::new(
             1,
-            (params.grow_d1_max * (1.0 - t).powf(params.grow_d1_exp)) as i16 + 2,
+            (params.grow_d1_start * (1.0 - t) + params.grow_d1_end * t) as i16 + 2,
         );
         let grow_d2 = Uniform::new(
             1,
-            (params.grow_d2_max * (1.0 - t).powf(params.grow_d2_exp)) as i16 + 2,
+            (params.grow_d2_start * (1.0 - t) + params.grow_d2_end * t) as i16 + 2,
         );
 
         let rect_move = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 4 {
@@ -432,7 +431,6 @@ fn mc(
                     rects[i] = new;
                     score += score_diff;
                     if score > best_score {
-                        // eprintln!("best {}", best_score);
                         best_score = score;
                         best = rects.clone();
                     }
@@ -469,18 +467,23 @@ fn main() {
         }
     }
 
-    let params = McParams {
+    let default_params = McParams {
         temp0: 1.0,
         temp1: 1e-5,
         move_d_max: 3,
-        grow_d1_max: 256.0,
-        grow_d1_exp: 1.0,
-        grow_d2_max: 256.0,
-        grow_d2_exp: 1.0,
+        grow_d1_start: 256.0,
+        grow_d1_end: 1.0,
+        grow_d2_start: 256.0,
+        grow_d2_end: 1.0,
         rect_move_weight: 0.2,
         rect_grow_d1_weight: 0.4,
         rect_grow_d2_weight: 0.4,
     };
+    let params = std::env::args()
+        .skip(1)
+        .next()
+        .and_then(|arg| Some(serde_json::de::from_str(&arg).unwrap()))
+        .unwrap_or(default_params);
 
     let mut rng = Mcg128Xsl64::new(1);
     let (_, best) = mc(params, &mut rng, &rects, &target, &size);
