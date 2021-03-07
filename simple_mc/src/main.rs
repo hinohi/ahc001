@@ -286,12 +286,6 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
         .any(|(j, rect)| i != j && new.intersect(rect))
 }
 
-enum IntersectDirection {
-    X,
-    Y,
-    None,
-}
-
 fn mc(
     rng: &mut Mcg128Xsl64,
     rects: &[Rect],
@@ -317,7 +311,7 @@ fn mc(
     let mut rects = rects.to_vec();
     let mut best = rects.clone();
     let mut best_score = score;
-    let temp0: f64 = 10.0;
+    let temp0: f64 = 1.0;
     let temp1: f64 = 0.0001;
     loop {
         let elapsed = now.elapsed();
@@ -334,31 +328,19 @@ fn mc(
 
         for _ in 0..1000 {
             let i = (rng.next_u32() % rects.len() as u32) as usize;
-            let (new, id) = match rng.next_u32() % 12 {
-                0 => (rects[i].move_x(move_d.sample(rng)), IntersectDirection::X),
-                1 => (rects[i].move_x(-move_d.sample(rng)), IntersectDirection::X),
-                2 => (rects[i].move_y(move_d.sample(rng)), IntersectDirection::Y),
-                3 => (rects[i].move_y(-move_d.sample(rng)), IntersectDirection::Y),
-                4 => (
-                    rects[i].grow_x1(grow_d.sample(rng)),
-                    IntersectDirection::None,
-                ),
-                5 => (rects[i].grow_x1(-grow_d.sample(rng)), IntersectDirection::X),
-                6 => (rects[i].grow_x2(grow_d.sample(rng)), IntersectDirection::X),
-                7 => (
-                    rects[i].grow_x2(-grow_d.sample(rng)),
-                    IntersectDirection::None,
-                ),
-                8 => (
-                    rects[i].grow_y1(grow_d.sample(rng)),
-                    IntersectDirection::None,
-                ),
-                9 => (rects[i].grow_y1(-grow_d.sample(rng)), IntersectDirection::Y),
-                10 => (rects[i].grow_y2(grow_d.sample(rng)), IntersectDirection::Y),
-                11 => (
-                    rects[i].grow_y2(-grow_d.sample(rng)),
-                    IntersectDirection::None,
-                ),
+            let (new, need) = match rng.next_u32() % 12 {
+                0 => (rects[i].move_x(move_d.sample(rng)), true),
+                1 => (rects[i].move_x(-move_d.sample(rng)), true),
+                2 => (rects[i].move_y(move_d.sample(rng)), true),
+                3 => (rects[i].move_y(-move_d.sample(rng)), true),
+                4 => (rects[i].grow_x1(grow_d.sample(rng)), false),
+                5 => (rects[i].grow_x1(-grow_d.sample(rng)), true),
+                6 => (rects[i].grow_x2(grow_d.sample(rng)), true),
+                7 => (rects[i].grow_x2(-grow_d.sample(rng)), false),
+                8 => (rects[i].grow_y1(grow_d.sample(rng)), false),
+                9 => (rects[i].grow_y1(-grow_d.sample(rng)), true),
+                10 => (rects[i].grow_y2(grow_d.sample(rng)), true),
+                11 => (rects[i].grow_y2(-grow_d.sample(rng)), false),
                 _ => unreachable!(),
             };
             if let Some(new) = new {
@@ -368,13 +350,7 @@ fn mc(
                 let new_score = new.score(size[i]);
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                    let intersected = match id {
-                        IntersectDirection::X | IntersectDirection::Y => {
-                            qtree.intersect(&new, i, &rects)
-                        }
-                        IntersectDirection::None => false,
-                    };
-                    if intersected {
+                    if need && qtree.intersect(&new, i, &rects) {
                         continue;
                     }
 
