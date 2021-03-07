@@ -107,15 +107,9 @@ impl QTree {
     }
 
     fn intersect_one_grid(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
-        for &j in self.grid[gid as usize].iter() {
-            if i == j {
-                continue;
-            }
-            if new.intersect(&rects[j]) {
-                return true;
-            }
-        }
-        false
+        self.grid[gid as usize]
+            .iter()
+            .any(|&j| i != j && new.intersect(&rects[j]))
     }
 
     pub fn intersect_to_parent(&self, mut gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
@@ -328,6 +322,9 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
+            // for (g, grid) in qtree.grid.iter().enumerate() {
+            //     eprintln!("{} {:?}", g, grid);
+            // }
             break (best_score, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
