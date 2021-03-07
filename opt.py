@@ -8,7 +8,7 @@ import optuna
 
 optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 logger = optuna.logging.get_logger('run')
-study_name = "simple-mc-non-n-specified-100"
+study_name = "simple-mc_non-n-specified_100_2"
 storage_name = "sqlite:///{}.db".format(study_name)
 study = optuna.create_study(
     study_name=study_name,
@@ -36,7 +36,7 @@ def run(param: str) -> float:
                 logger.warning(p.stderr.read().decode())
         workers[:] = tmp_workers
 
-    for n in range(10):
+    for n in range(100):
         in_file = f'tools/in/{n:04}.txt'
         out_file = f'out/{n:04}.txt'
         p = subprocess.Popen(
