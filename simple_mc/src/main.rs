@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 
 use proconio::{input, source::once::OnceSource};
 use rand::{
@@ -131,14 +134,15 @@ impl QTree {
         if gid >= LAYER3_OFFSET {
             return false;
         }
-        let mut stack = vec![children_gid_range(gid)];
-        while let Some(children) = stack.pop() {
+        let mut queue = VecDeque::new();
+        queue.push_front(children_gid_range(gid));
+        while let Some(children) = queue.pop_front() {
             for c in children {
                 if self.intersect_one_grid(c, new, i, rects) {
                     return true;
                 }
                 if c < LAYER3_OFFSET {
-                    stack.push(children_gid_range(c));
+                    queue.push_back(children_gid_range(c));
                 }
             }
         }
