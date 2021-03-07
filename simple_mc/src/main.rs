@@ -271,7 +271,21 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
         .any(|(j, rect)| i != j && new.intersect(rect))
 }
 
+pub struct McParams {
+    temp0: f64,
+    temp1: f64,
+    move_d_max: i16,
+    grow_d1_max: f64,
+    grow_d1_exp: f64,
+    grow_d2_max: f64,
+    grow_d2_exp: f64,
+    rect_move_weight: f64,
+    rect_grow_d1_weight: f64,
+    rect_grow_d2_weight: f64,
+}
+
 fn mc(
+    params: McParams,
     rng: &mut Mcg128Xsl64,
     rects: &[Rect],
     target: &[(i16, i16)],
@@ -288,15 +302,44 @@ fn mc(
         scores.push(s);
     }
 
-    let move_d = Uniform::new(1, 2 + 1);
+    #[derive(Copy, Clone)]
+    enum MoveType {
+        Move,
+        Grow1,
+        Grow2,
+    }
+
+    let weight = {
+        let s = params.rect_move_weight + params.rect_grow_d1_weight + params.rect_grow_d2_weight;
+        let mut weight = [MoveType::Move; 128];
+        let a = (params.rect_move_weight * weight.len() as f64 / s).ceil() as usize;
+        let b = (params.rect_grow_d1_weight * weight.len() as f64 / s).ceil() as usize;
+        let c = (params.rect_grow_d2_weight * weight.len() as f64 / s).ceil() as usize;
+        for i in 0..a {
+            if i < weight.len() {
+                weight[i] = MoveType::Move;
+            }
+        }
+        for i in a..b {
+            if i < weight.len() {
+                weight[i] = MoveType::Grow1;
+            }
+        }
+        for i in b..c {
+            if i < weight.len() {
+                weight[i] = MoveType::Grow2;
+            }
+        }
+        weight
+    };
+
+    let move_d = Uniform::new(1, params.move_d_max + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut qtree = QTree::new(rects);
     let mut rects = rects.to_vec();
     let mut best = rects.clone();
     let mut best_score = score;
-    let temp0: f64 = 1.0;
-    let temp1: f64 = 0.0001;
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
@@ -306,75 +349,72 @@ fn mc(
             break (best_score, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
-        let beta = 1.0 / (temp0.powf(1.0 - t) * temp1.powf(t));
-        let grow_d = Uniform::new(1, (256.0 * (1.0 - t)) as i16 + 4);
+        let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
+
+        let grow_d1 = Uniform::new(
+            1,
+            (params.grow_d1_max * (1.0 - t).powf(params.grow_d1_exp)) as i16 + 2,
+        );
+        let grow_d2 = Uniform::new(
+            1,
+            (params.grow_d2_max * (1.0 - t).powf(params.grow_d2_exp)) as i16 + 2,
+        );
+
+        let rect_move = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 4 {
+            0 => rect.move_x(move_d.sample(rng)),
+            1 => rect.move_x(-move_d.sample(rng)),
+            2 => rect.move_y(move_d.sample(rng)),
+            3 => rect.move_y(-move_d.sample(rng)),
+            _ => unreachable!(),
+        };
+        let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
+            0 => (rect.grow_x1(grow_d1.sample(rng)), false),
+            1 => (rect.grow_x1(-grow_d1.sample(rng)), true),
+            2 => (rect.grow_x2(grow_d1.sample(rng)), true),
+            3 => (rect.grow_x2(-grow_d1.sample(rng)), false),
+            4 => (rect.grow_y1(grow_d1.sample(rng)), false),
+            5 => (rect.grow_y1(-grow_d1.sample(rng)), true),
+            6 => (rect.grow_y2(grow_d1.sample(rng)), true),
+            7 => (rect.grow_y2(-grow_d1.sample(rng)), false),
+            _ => unreachable!(),
+        };
+        let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
+            0 => rect
+                .grow_x1(grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
+            1 => rect
+                .grow_x1(-grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
+            2 => rect
+                .grow_x1(grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
+            3 => rect
+                .grow_x1(-grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
+            4 => rect
+                .grow_x2(grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
+            5 => rect
+                .grow_x2(-grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
+            6 => rect
+                .grow_x2(grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
+            7 => rect
+                .grow_x2(-grow_d2.sample(rng))
+                .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
+            _ => unreachable!(),
+        };
 
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
             let i = (rng.next_u32() % rects.len() as u32) as usize;
-            let (new, need) = match rng.next_u32() % 20 {
-                0 => (rects[i].move_x(move_d.sample(rng)), true),
-                1 => (rects[i].move_x(-move_d.sample(rng)), true),
-                2 => (rects[i].move_y(move_d.sample(rng)), true),
-                3 => (rects[i].move_y(-move_d.sample(rng)), true),
-                4 => (rects[i].grow_x1(grow_d.sample(rng)), false),
-                5 => (rects[i].grow_x1(-grow_d.sample(rng)), true),
-                6 => (rects[i].grow_x2(grow_d.sample(rng)), true),
-                7 => (rects[i].grow_x2(-grow_d.sample(rng)), false),
-                8 => (rects[i].grow_y1(grow_d.sample(rng)), false),
-                9 => (rects[i].grow_y1(-grow_d.sample(rng)), true),
-                10 => (rects[i].grow_y2(grow_d.sample(rng)), true),
-                11 => (rects[i].grow_y2(-grow_d.sample(rng)), false),
-                12 => (
-                    rects[i]
-                        .grow_x1(grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y1(-grow_d.sample(rng))),
-                    true,
-                ),
-                13 => (
-                    rects[i]
-                        .grow_x1(-grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y1(grow_d.sample(rng))),
-                    true,
-                ),
-                14 => (
-                    rects[i]
-                        .grow_x1(grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y2(grow_d.sample(rng))),
-                    true,
-                ),
-                15 => (
-                    rects[i]
-                        .grow_x1(-grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y2(-grow_d.sample(rng))),
-                    true,
-                ),
-                16 => (
-                    rects[i]
-                        .grow_x2(grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y1(grow_d.sample(rng))),
-                    true,
-                ),
-                17 => (
-                    rects[i]
-                        .grow_x2(-grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y1(-grow_d.sample(rng))),
-                    true,
-                ),
-                18 => (
-                    rects[i]
-                        .grow_x2(grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y2(-grow_d.sample(rng))),
-                    true,
-                ),
-                19 => (
-                    rects[i]
-                        .grow_x2(-grow_d.sample(rng))
-                        .and_then(|rect| rect.grow_y2(grow_d.sample(rng))),
-                    true,
-                ),
-                _ => unreachable!(),
+            let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
+            let (new, need) = match w {
+                MoveType::Move => (rect_move(rng, &rects[i]), true),
+                MoveType::Grow1 => rect_grow_d1(rng, &rects[i]),
+                MoveType::Grow2 => (rect_grow_d2(rng, &rects[i]), true),
             };
             if let Some(new) = new {
                 if !new.contain(target[i].0, target[i].1) {
@@ -429,8 +469,21 @@ fn main() {
         }
     }
 
+    let params = McParams {
+        temp0: 1.0,
+        temp1: 1e-5,
+        move_d_max: 3,
+        grow_d1_max: 256.0,
+        grow_d1_exp: 1.0,
+        grow_d2_max: 256.0,
+        grow_d2_exp: 1.0,
+        rect_move_weight: 0.2,
+        rect_grow_d1_weight: 0.4,
+        rect_grow_d2_weight: 0.4,
+    };
+
     let mut rng = Mcg128Xsl64::new(1);
-    let (_, best) = mc(&mut rng, &rects, &target, &size);
+    let (_, best) = mc(params, &mut rng, &rects, &target, &size);
     for rect in best {
         println!("{} {} {} {}", rect.x1, rect.y1, rect.x2, rect.y2);
     }
