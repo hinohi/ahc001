@@ -135,35 +135,18 @@ enum IntersectDirection {
     None,
 }
 
-fn main() {
+fn mc(
+    rng: &mut Mcg128Xsl64,
+    rects: &[Rect],
+    target: &[(i32, i32)],
+    size: &[i32],
+) -> (f64, Vec<Rect>) {
     let now = Instant::now();
-    const TIME_LIMIT: Duration = Duration::from_millis(4950);
-
-    let stdin = stdin();
-    let f = stdin.lock();
-    // let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
-    let source = OnceSource::new(f);
-    input! {
-        from source,
-        n: usize,
-        xyr: [(i32, i32, i32); n],
-    }
-    let mut rects = Vec::with_capacity(n);
-    for &(x, y, _) in xyr.iter() {
-        rects.push(Rect::new(x, x + 1, y, y + 1));
-    }
-
-    for i in 0..n {
-        for j in i + 1..n {
-            if rects[i].intersect(&rects[j]) {
-                eprintln!("{} - {} are intersect", i, j);
-            }
-        }
-    }
+    const TIME_LIMIT: Duration = Duration::from_millis(990);
 
     let mut score = 0.0;
-    let mut scores = Vec::with_capacity(n);
-    for (rect, &(_, _, r)) in rects.iter().zip(xyr.iter()) {
+    let mut scores = Vec::with_capacity(rects.len());
+    for (rect, &r) in rects.iter().zip(size.iter()) {
         let s = rect.score(r);
         score += s;
         scores.push(s);
@@ -173,15 +156,15 @@ fn main() {
     let grow_d = Uniform::new(1, 8 + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
+    let mut rects = rects.to_vec();
     let mut best = rects.clone();
     let mut best_score = score;
     let temp0: f64 = 1.0;
     let temp1: f64 = 0.0001;
-    let mut rng = Mcg128Xsl64::new(1);
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            break;
+            break (best_score, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (temp0.powf(1.0 - t) * temp1.powf(t));
@@ -189,60 +172,36 @@ fn main() {
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
-            let i = (rng.next_u32() % n as u32) as usize;
+            let i = (rng.next_u32() % rects.len() as u32) as usize;
             let (new, id) = match rng.next_u32() % 12 {
-                0 => (
-                    rects[i].move_x(move_d.sample(&mut rng)),
-                    IntersectDirection::X,
-                ),
-                1 => (
-                    rects[i].move_x(-move_d.sample(&mut rng)),
-                    IntersectDirection::X,
-                ),
-                2 => (
-                    rects[i].move_y(move_d.sample(&mut rng)),
-                    IntersectDirection::Y,
-                ),
-                3 => (
-                    rects[i].move_y(-move_d.sample(&mut rng)),
-                    IntersectDirection::Y,
-                ),
+                0 => (rects[i].move_x(move_d.sample(rng)), IntersectDirection::X),
+                1 => (rects[i].move_x(-move_d.sample(rng)), IntersectDirection::X),
+                2 => (rects[i].move_y(move_d.sample(rng)), IntersectDirection::Y),
+                3 => (rects[i].move_y(-move_d.sample(rng)), IntersectDirection::Y),
                 4 => (
-                    rects[i].grow_x1(grow_d.sample(&mut rng)),
+                    rects[i].grow_x1(grow_d.sample(rng)),
                     IntersectDirection::None,
                 ),
-                5 => (
-                    rects[i].grow_x1(-grow_d.sample(&mut rng)),
-                    IntersectDirection::X,
-                ),
-                6 => (
-                    rects[i].grow_x2(grow_d.sample(&mut rng)),
-                    IntersectDirection::X,
-                ),
+                5 => (rects[i].grow_x1(-grow_d.sample(rng)), IntersectDirection::X),
+                6 => (rects[i].grow_x2(grow_d.sample(rng)), IntersectDirection::X),
                 7 => (
-                    rects[i].grow_x2(-grow_d.sample(&mut rng)),
+                    rects[i].grow_x2(-grow_d.sample(rng)),
                     IntersectDirection::None,
                 ),
                 8 => (
-                    rects[i].grow_y1(grow_d.sample(&mut rng)),
+                    rects[i].grow_y1(grow_d.sample(rng)),
                     IntersectDirection::None,
                 ),
-                9 => (
-                    rects[i].grow_y1(-grow_d.sample(&mut rng)),
-                    IntersectDirection::Y,
-                ),
-                10 => (
-                    rects[i].grow_y2(grow_d.sample(&mut rng)),
-                    IntersectDirection::Y,
-                ),
+                9 => (rects[i].grow_y1(-grow_d.sample(rng)), IntersectDirection::Y),
+                10 => (rects[i].grow_y2(grow_d.sample(rng)), IntersectDirection::Y),
                 11 => (
-                    rects[i].grow_y2(-grow_d.sample(&mut rng)),
+                    rects[i].grow_y2(-grow_d.sample(rng)),
                     IntersectDirection::None,
                 ),
                 _ => unreachable!(),
             };
             if let Some(new) = new {
-                if !new.contain(xyr[i].0, xyr[i].1) {
+                if !new.contain(target[i].0, target[i].1) {
                     continue;
                 }
                 let intersected = match id {
@@ -252,9 +211,9 @@ fn main() {
                 if intersected {
                     continue;
                 }
-                let new_score = new.score(xyr[i].2);
+                let new_score = new.score(size[i]);
                 let score_diff = new_score - scores[i];
-                if score_diff >= 0.0 || prob_d.sample(&mut rng) < (score_diff * beta).exp() {
+                if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
                     scores[i] = new_score;
                     rects[i] = new;
                     score += score_diff;
@@ -265,6 +224,45 @@ fn main() {
                     }
                 }
             }
+        }
+    }
+}
+
+fn main() {
+    let stdin = stdin();
+    let f = stdin.lock();
+    // let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
+    let source = OnceSource::new(f);
+    input! {
+        from source,
+        n: usize,
+        xyr: [(i32, i32, i32); n],
+    }
+    let mut rects = Vec::with_capacity(n);
+    let mut target = Vec::with_capacity(n);
+    let mut size = Vec::with_capacity(n);
+    for &(x, y, r) in xyr.iter() {
+        rects.push(Rect::new(x, x + 1, y, y + 1));
+        target.push((x, y));
+        size.push(r);
+    }
+
+    for i in 0..n {
+        for j in i + 1..n {
+            if rects[i].intersect(&rects[j]) {
+                eprintln!("{} - {} are intersect", i, j);
+            }
+        }
+    }
+
+    let mut rng = Mcg128Xsl64::new(1);
+    let mut best = rects.clone();
+    let mut best_score = 0.0;
+    for _ in 0..5 {
+        let (s, r) = mc(&mut rng, &rects, &target, &size);
+        if s > best_score {
+            best_score = s;
+            best = r;
         }
     }
 
