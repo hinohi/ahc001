@@ -1,7 +1,4 @@
-use std::{
-    io::stdin,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use proconio::{input, source::once::OnceSource};
 use rand::{
@@ -229,7 +226,7 @@ fn mc(
 }
 
 fn main() {
-    let stdin = stdin();
+    let stdin = std::io::stdin();
     let f = stdin.lock();
     // let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
     let source = OnceSource::new(f);
