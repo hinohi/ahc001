@@ -3,11 +3,11 @@
 use rand::prelude::*;
 use std::{collections::BTreeSet, io::prelude::*};
 
-fn gen(path: &str, seed: u64) -> std::io::Result<()> {
+fn gen(path: &str, seed: u64, n: usize) -> std::io::Result<()> {
     eprintln!("generating {}", path);
     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(seed);
     let mut f = std::io::BufWriter::new(std::fs::File::create(path)?);
-    let n = (50.0 * 4.0f64.powf(rng.gen::<f64>())).round() as usize;
+    // let n = (50.0 * 4.0f64.powf(rng.gen::<f64>())).round() as usize;
     let mut ps = vec![];
     let mut used = BTreeSet::new();
     for _ in 0..n {
@@ -40,8 +40,11 @@ fn gen(path: &str, seed: u64) -> std::io::Result<()> {
 
 fn main() -> std::io::Result<()> {
     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(1);
-    for id in 0..1000 {
-        gen(&format!("in/{:04}.txt", id), rng.next_u64())?;
+    for n in 50..=250 {
+        std::fs::create_dir(format!("in2/{:03}", n))?;
+        for id in 0..100 {
+            gen(&format!("in2/{:03}/{:04}.txt", n, id), rng.next_u64(), n)?;
+        }
     }
     Ok(())
 }
