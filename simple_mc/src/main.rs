@@ -187,7 +187,7 @@ impl Rect {
 
     pub fn score(&self, r: i32) -> f64 {
         let s = self.size().min(r) as f64 / self.size().max(r) as f64;
-        1.0 - (1.0 - s) * (1.0 - s)
+        s * (2.0 - s)
     }
 
     pub fn move_x(&self, d: i16) -> Option<Rect> {
