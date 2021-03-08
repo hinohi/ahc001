@@ -158,7 +158,7 @@ impl QTree {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Rect {
     pub x1: i16,
     pub x2: i16,
