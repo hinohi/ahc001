@@ -93,9 +93,6 @@ impl QTree {
     }
 
     fn intersect_one_grid(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
-        if gid as usize >= self.grid.len() {
-            eprintln!("{} {:?} {}", gid, new, i);
-        }
         self.grid[gid as usize]
             .iter()
             .any(|&j| i != j && new.intersect(&rects[j]))
