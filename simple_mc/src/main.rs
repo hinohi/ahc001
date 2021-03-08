@@ -332,7 +332,7 @@ fn mc(
     rects: &[Rect],
     target: &[(i16, i16)],
     size: &[i32],
-) -> (f64, Vec<Rect>) {
+) -> Vec<Rect> {
     let now = Instant::now();
     const TIME_LIMIT: Duration = Duration::from_millis(4950);
 
@@ -378,6 +378,7 @@ fn mc(
     let move_d = Uniform::new(1, params.move_d_max + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
+    let mut count = (0, 0, 0);
     let mut qtree = QTree::new(rects);
     let mut rects = rects.to_vec();
     let mut best = rects.clone();
@@ -385,7 +386,8 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            break (best_score, best);
+            eprintln!("{:?}", count);
+            break best;
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
@@ -448,6 +450,7 @@ fn mc(
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
+            count.0 += 1;
             let i = (rng.next_u32() % rects.len() as u32) as usize;
             let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
             let new = match w {
@@ -456,6 +459,7 @@ fn mc(
                 MoveType::Grow2 => rect_grow_d2(rng, &rects[i]),
             };
             if let Some(new) = new {
+                count.1 += 1;
                 if !new.contain(target[i].0, target[i].1) {
                     continue;
                 }
@@ -467,6 +471,7 @@ fn mc(
                             continue;
                         }
                     }
+                    count.2 += 1;
                     qtree.update(&new, &rects[i], i);
                     scores[i] = new_score;
                     rects[i] = new;
@@ -508,7 +513,7 @@ fn main() {
         }
     }
 
-    let params = McParams {
+    let default_params = McParams {
         temp0: 0.10776805748978419,
         temp1: 0.00017098824773959434,
         move_d_max: 59,
@@ -527,7 +532,7 @@ fn main() {
         .unwrap_or(default_params);
 
     let mut rng = Mcg128Xsl64::new(1);
-    let (_, best) = mc(params, &mut rng, &rects, &target, &size);
+    let best = mc(params, &mut rng, &rects, &target, &size);
     for rect in best {
         println!("{} {} {} {}", rect.x1, rect.y1, rect.x2, rect.y2);
     }
