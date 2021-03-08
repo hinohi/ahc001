@@ -508,17 +508,17 @@ fn main() {
         }
     }
 
-    let default_params = McParams {
-        temp0: 0.15517356296931928,
-        temp1: 0.0002518980396426264,
-        move_d_max: 45,
-        grow_d1_start: 260.51619125644294,
-        grow_d1_end: 2.228756704898394,
-        grow_d2_start: 1115.2550042894945,
-        grow_d2_end: 3.535124423329001,
-        rect_move_weight: 0.038514877695759175,
-        rect_grow_d1_weight: 0.0009843601176301453,
-        rect_grow_d2_weight: 0.7184012506442653,
+    let params = McParams {
+        temp0: 0.10776805748978419,
+        temp1: 0.00017098824773959434,
+        move_d_max: 59,
+        grow_d1_start: 757.0413842816848,
+        grow_d1_end: 8.632905527414328,
+        grow_d2_start: 1275.2877955712484,
+        grow_d2_end: 6.087155403694206,
+        rect_move_weight: 0.0034894679456486492,
+        rect_grow_d1_weight: 0.2550967075941691,
+        rect_grow_d2_weight: 0.7587268147916909,
     };
     let params = std::env::args()
         .skip(1)
