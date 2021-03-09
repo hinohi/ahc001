@@ -50,11 +50,10 @@ npx cdk deploy --profile=ahc001
 ### Lambda を直接 invoke するテスト
 
 ```
-$ aws lambda invoke --function-name ahc001 --payload $(base64 lambda-test-body.json) test.txt
-{
-    "StatusCode": 200,
-    "ExecutedVersion": "$LATEST"
-}
-$ cat test.txt
-0.9533758564853474%                                                                                                                                                                                                             
+aws lambda invoke \
+    --function-name ahc001 \
+    --payload $(base64 lambda-test-body.json) \
+    --invocation-type Event /dev/null
+aws sqs receive-message --queue-url https://sqs.ap-northeast-1.amazonaws.com/169698630369/ahc001-Queue4A7E3555-RODR3OR8LUGQ > a.json
+aws sqs delete-message --receipt-handle $(jq -r '.Messages[0].ReceiptHandle' a.json)  --queue-url https://sqs.ap-northeast-1.amazonaws.com/169698630369/ahc001-Queue4A7E3555-RODR3OR8LUGQ
 ```

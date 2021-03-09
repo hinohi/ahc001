@@ -4,7 +4,6 @@ import * as ecr from '@aws-cdk/aws-ecr';
 import * as sqs from '@aws-cdk/aws-sqs';
 import {Role, ServicePrincipal, ManagedPolicy} from '@aws-cdk/aws-iam';
 import {SqsDestination} from '@aws-cdk/aws-lambda-destinations';
-import {SqsEventSource} from '@aws-cdk/aws-lambda-event-sources';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -19,11 +18,7 @@ export class CdkStack extends cdk.Stack {
         ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaSQSQueueExecutionRole'),
       ],
     });
-    const inputQueue = new sqs.Queue(this, 'InputQueue', {
-      retentionPeriod: cdk.Duration.hours(1),
-      visibilityTimeout: cdk.Duration.seconds(60),
-    });
-    const outputQueue = new sqs.Queue(this, 'OutputQueue', {
+    const queue = new sqs.Queue(this, 'Queue', {
       retentionPeriod: cdk.Duration.hours(1),
       visibilityTimeout: cdk.Duration.seconds(60),
     });
@@ -31,24 +26,22 @@ export class CdkStack extends cdk.Stack {
     const func = new lambda.Function(this, 'lambda', {
       functionName: 'ahc001',
       code: lambda.Code.fromEcrImage(repository, {
-        tag: '20210309-191804',
+        tag: '20210309-194317',
       }),
       role,
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
       timeout: cdk.Duration.seconds(10),
-      onSuccess: new SqsDestination(outputQueue),
+      onSuccess: new SqsDestination(queue),
+      maxEventAge: cdk.Duration.minutes(10),
+      retryAttempts: 0,
     });
-    func.addEventSource(new SqsEventSource(inputQueue, {batchSize: 1}));
 
     new cdk.CfnOutput(this, 'LambdaArn', {
       value: func.functionArn,
     });
-    new cdk.CfnOutput(this, 'InputQueueUrl', {
-      value: inputQueue.queueUrl,
-    });
     new cdk.CfnOutput(this, 'OutputQueueUrl', {
-      value: outputQueue.queueUrl,
+      value: queue.queueUrl,
     });
   }
 }

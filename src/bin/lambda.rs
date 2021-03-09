@@ -32,12 +32,19 @@ async fn response(url_base: &str, aws_request_id: &str, body: String) -> Result<
 
 #[derive(Deserialize)]
 struct Body {
+    message_id: String,
     n: u32,
     seed: u32,
     arg: String,
 }
 
-async fn calc(data: &str) -> Result<f64> {
+#[derive(Serialize)]
+struct Response {
+    message_id: String,
+    score: f64,
+}
+
+async fn calc(data: &str) -> Result<Response> {
     let body: Body = serde_json::from_str(data)?;
     let path = format!("/in2/{:03}/{:04}.txt", body.n, body.seed);
     let mut buf = String::new();
@@ -48,27 +55,11 @@ async fn calc(data: &str) -> Result<f64> {
     let source = OnceSource::new(buf.as_bytes());
     let input = parse_source(source);
 
-    let (best_score, _) = run(input, Some(body.arg));
-    Ok(best_score)
-}
-
-#[derive(Deserialize)]
-struct SQSEvent {
-    #[serde(rename = "Records")]
-    records: Vec<SQSRecord>,
-}
-
-#[derive(Deserialize)]
-struct SQSRecord {
-    #[serde(rename = "messageId")]
-    message_id: String,
-    body: String,
-}
-
-#[derive(Serialize)]
-struct Response {
-    message_id: String,
-    score: f64,
+    let (score, _) = run(input, Some(body.arg));
+    Ok(Response {
+        message_id: body.message_id,
+        score,
+    })
 }
 
 #[tokio::main]
@@ -77,15 +68,7 @@ async fn main() -> Result<()> {
     let url_base = format!("http://{}", aws_lambda_runtime_api);
     loop {
         let (aws_request_id, data) = next_invocation(&url_base).await?;
-        let event: SQSEvent = serde_json::from_str(&data)?;
-        let mut r = Vec::new();
-        for record in event.records {
-            let score = calc(&record.body).await?;
-            r.push(Response {
-                message_id: record.message_id,
-                score,
-            });
-        }
+        let r = calc(&data).await?;
         response(&url_base, &aws_request_id, serde_json::to_string(&r)?).await?;
     }
 }
