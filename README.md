@@ -39,6 +39,7 @@ base image: https://gallery.ecr.aws/lambda/provided
 169698630369.dkr.ecr.ap-northeast-1.amazonaws.com/ahc001
 
 * 20210309-155930: f5e0eb7341e81c9c7697d823b387260756b629ac
+* 20210309-210840: b9844151804abf57162aa0f60dc6c0f83126cbe2 「Rect の単純な水平移動は削除」
 
 ### deploy
 
