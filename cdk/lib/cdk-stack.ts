@@ -31,7 +31,7 @@ export class CdkStack extends cdk.Stack {
     const func = new lambda.Function(this, 'lambda', {
       functionName: 'ahc001',
       code: lambda.Code.fromEcrImage(repository, {
-        tag: '20210309-155930',
+        tag: '20210309-191804',
       }),
       role,
       runtime: lambda.Runtime.FROM_IMAGE,

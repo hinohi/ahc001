@@ -2,7 +2,7 @@ use std::env;
 
 use anyhow::{Context, Result};
 use proconio::source::once::OnceSource;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use simulated_annealing::{parse_source, run};
 use tokio::io::AsyncReadExt;
@@ -52,13 +52,40 @@ async fn calc(data: &str) -> Result<f64> {
     Ok(best_score)
 }
 
+#[derive(Deserialize)]
+struct SQSEvent {
+    #[serde(rename = "Records")]
+    records: Vec<SQSRecord>,
+}
+
+#[derive(Deserialize)]
+struct SQSRecord {
+    #[serde(rename = "messageId")]
+    message_id: String,
+    body: String,
+}
+
+#[derive(Serialize)]
+struct Response {
+    message_id: String,
+    score: f64,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let aws_lambda_runtime_api = env::var("AWS_LAMBDA_RUNTIME_API")?;
     let url_base = format!("http://{}", aws_lambda_runtime_api);
     loop {
         let (aws_request_id, data) = next_invocation(&url_base).await?;
-        let score = calc(&data).await?;
-        response(&url_base, &aws_request_id, format!("{}", score)).await?;
+        let event: SQSEvent = serde_json::from_str(&data)?;
+        let mut r = Vec::new();
+        for record in event.records {
+            let score = calc(&record.body).await?;
+            r.push(Response {
+                message_id: record.message_id,
+                score,
+            });
+        }
+        response(&url_base, &aws_request_id, serde_json::to_string(&r)?).await?;
     }
 }
