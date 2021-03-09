@@ -8,6 +8,6 @@ edition = "2018"
 
 [workspace]
 members = [
-    "simple_mc",
+    "simulated-annealing",
     "tools",
 ]

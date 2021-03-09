@@ -1,5 +1,5 @@
 [package]
-name = "simple_mc"
+name = "simulated-annealing"
 version = "0.1.0"
 authors = ["Nakayama Daiju <42.daiju@gmail.com>"]
 edition = "2018"
