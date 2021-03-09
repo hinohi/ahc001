@@ -344,7 +344,7 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            eprintln!("{:?}", count);
+            // eprintln!("{:?}", count);
             break best;
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
@@ -352,11 +352,11 @@ fn mc(
 
         let grow_d1 = Uniform::new(
             1,
-            (params.grow_d1_start.powf(1.0 - t) * params.grow_d1_end.powf(t)) as i16 + 2,
+            (params.grow_d1_start * (1.0 - t) + params.grow_d1_end * t) as i16 + 2,
         );
         let grow_d2 = Uniform::new(
             1,
-            (params.grow_d2_start.powf(1.0 - t) * params.grow_d2_end.powf(t)) as i16 + 2,
+            (params.grow_d2_start * (1.0 - t) + params.grow_d2_end * t) as i16 + 2,
         );
 
         let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
@@ -462,13 +462,13 @@ fn main() {
     }
 
     let default_params = McParams {
-        temp0: 0.3299148353327332,
-        temp1: 2.5034707133439624e-05,
-        grow_d1_start: 258.0765507552309,
-        grow_d1_end: 2350.897031215518,
-        grow_d2_start: 53.794583070063,
-        grow_d2_end: 18.04499650372468,
-        rect_grow_d1_weight: 0.9275298958037843,
+        temp0: 0.17955184077371247,
+        temp1: 0.00015679734137045358,
+        grow_d1_start: 264.0121510390868,
+        grow_d1_end: 4.294255587135436,
+        grow_d2_start: 89.56133970584918,
+        grow_d2_end: 4.294255587135436,
+        rect_grow_d1_weight: 0.7882745116485163,
     };
     let params = std::env::args()
         .skip(1)

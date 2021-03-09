@@ -3,7 +3,7 @@ import subprocess
 
 import optuna
 
-study_name = "simple-mc_non-n-specified_100_3"
+study_name = "simple-mc_non-n-specified_100_4"
 storage_name = "sqlite:///{}.db".format(study_name)
 study = optuna.create_study(
     study_name=study_name,
@@ -31,7 +31,7 @@ def run(param: str) -> float:
                 print(p.stderr.read().decode())
         workers[:] = tmp_workers
 
-    for n in range(100, 200):
+    for n in range(100, 100 + 8):
         in_file = f'tools/in/{n:04}.txt'
         out_file = f'out/{n:04}.txt'
         p = subprocess.Popen(
