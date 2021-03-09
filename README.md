@@ -43,6 +43,7 @@ base image: https://gallery.ecr.aws/lambda/provided
 ### deploy
 
 ```
+npm run build
 npx cdk deploy --profile=ahc001
 ```
 
