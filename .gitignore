@@ -3,3 +3,4 @@ Cargo.lock
 dest
 out.svg
 out
+new_user_credentials.csv

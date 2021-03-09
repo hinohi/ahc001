@@ -374,15 +374,13 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     let move_d = Uniform::new(1, params.move_d_max + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
-    let mut count = (0, 0, 0);
     let mut qtree = QTree::new(&rects);
     let mut best = rects.clone();
     let mut best_score = score;
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            eprintln!("{:?}", count);
-            break (best_score, best);
+            return (best_score / scores.len() as f64, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
@@ -445,7 +443,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
-            count.0 += 1;
             let i = (rng.next_u32() % rects.len() as u32) as usize;
             let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
             let new = match w {
@@ -454,7 +451,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 MoveType::Grow2 => rect_grow_d2(rng, &rects[i]),
             };
             if let Some(new) = new {
-                count.1 += 1;
                 if !new.contain(input.points[i].0, input.points[i].1) {
                     continue;
                 }
@@ -466,7 +462,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                             continue;
                         }
                     }
-                    count.2 += 1;
                     qtree.update(&new, &rects[i], i);
                     scores[i] = new_score;
                     rects[i] = new;

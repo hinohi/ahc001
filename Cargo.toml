@@ -15,3 +15,9 @@ members = [
 [dependencies]
 proconio = "0.3"
 simulated-annealing = { path = "./simulated-annealing" }
+
+anyhow = "*"
+reqwest = { version = "0.11.1", default-features = false }
+tokio = { version = "1.2", features = ["full"] }
+serde = {version = "1.0", features = ["derive"] }
+serde_json = "1.0"

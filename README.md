@@ -29,3 +29,7 @@ $ /usr/bin/time ./target/release/local < tools/in/0003.txt > /dev/null
 ```
 
 倍とは言わないが、1.7倍くらいは遅い。
+
+## Lambda
+
+base image: https://gallery.ecr.aws/lambda/provided
