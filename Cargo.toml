@@ -10,5 +10,4 @@ edition = "2018"
 members = [
     "simple_mc",
     "tools",
-    "submit",
 ]
