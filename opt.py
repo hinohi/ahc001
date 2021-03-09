@@ -52,7 +52,10 @@ def receive(message_ids: set[str]) -> list[float]:
             rh = record['ReceiptHandle']
             receipt_handles[str(uuid.uuid4())] = rh
             body = json.loads(record['Body'])['responsePayload']
-            message_ids.remove(body['message_id'])
+            try:
+                message_ids.remove(body['message_id'])
+            except KeyError:
+                continue
             scores.append(body['score'])
         if receipt_handles:
             deleted = sqs_client.delete_message_batch(
