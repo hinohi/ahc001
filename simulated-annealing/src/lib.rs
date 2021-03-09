@@ -189,32 +189,6 @@ impl Rect {
         s * (2.0 - s)
     }
 
-    pub fn move_x(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || L <= self.x2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1 + d,
-                x2: self.x2 + d,
-                y1: self.y1,
-                y2: self.y2,
-            })
-        }
-    }
-
-    pub fn move_y(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || L <= self.y2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1 + d,
-                y2: self.y2 + d,
-            })
-        }
-    }
-
     pub fn grow_x1(&self, d: i16) -> Option<Rect> {
         if self.x1 + d < 0 || self.x2 <= self.x1 + d {
             None
@@ -316,14 +290,11 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
 pub struct McParams {
     temp0: f64,
     temp1: f64,
-    move_d_max: i16,
     grow_d1_start: f64,
     grow_d1_end: f64,
     grow_d2_start: f64,
     grow_d2_end: f64,
-    rect_move_weight: f64,
     rect_grow_d1_weight: f64,
-    rect_grow_d2_weight: f64,
 }
 
 fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
@@ -340,38 +311,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         scores.push(s);
     }
 
-    #[derive(Debug, Copy, Clone)]
-    enum MoveType {
-        Move,
-        Grow1,
-        Grow2,
-    }
-
-    let weight = {
-        let s = params.rect_move_weight + params.rect_grow_d1_weight + params.rect_grow_d2_weight;
-        let mut weight = [MoveType::Move; 128];
-        let a = (params.rect_move_weight * weight.len() as f64 / s).ceil() as usize;
-        let b = a + (params.rect_grow_d1_weight * weight.len() as f64 / s).ceil() as usize;
-        let c = b + (params.rect_grow_d2_weight * weight.len() as f64 / s).ceil() as usize;
-        for i in 0..a {
-            if i < weight.len() {
-                weight[i] = MoveType::Move;
-            }
-        }
-        for i in a..b {
-            if i < weight.len() {
-                weight[i] = MoveType::Grow1;
-            }
-        }
-        for i in b..c {
-            if i < weight.len() {
-                weight[i] = MoveType::Grow2;
-            }
-        }
-        weight
-    };
-
-    let move_d = Uniform::new(1, params.move_d_max + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut qtree = QTree::new(&rects);
@@ -394,13 +333,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
             (params.grow_d2_start * (1.0 - t) + params.grow_d2_end * t) as i16 + 2,
         );
 
-        let rect_move = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 4 {
-            0 => rect.move_x(move_d.sample(rng)),
-            1 => rect.move_x(-move_d.sample(rng)),
-            2 => rect.move_y(move_d.sample(rng)),
-            3 => rect.move_y(-move_d.sample(rng)),
-            _ => unreachable!(),
-        };
         let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
             0 => rect.grow_x1(grow_d1.sample(rng)),
             1 => rect.grow_x1(-grow_d1.sample(rng)),
@@ -444,11 +376,10 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 
         for _ in 0..1000 {
             let i = (rng.next_u32() % rects.len() as u32) as usize;
-            let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
-            let new = match w {
-                MoveType::Move => rect_move(rng, &rects[i]),
-                MoveType::Grow1 => rect_grow_d1(rng, &rects[i]),
-                MoveType::Grow2 => rect_grow_d2(rng, &rects[i]),
+            let new = if prob_d.sample(rng) < params.rect_grow_d1_weight {
+                rect_grow_d1(rng, &rects[i])
+            } else {
+                rect_grow_d2(rng, &rects[i])
             };
             if let Some(new) = new {
                 if !new.contain(input.points[i].0, input.points[i].1) {
@@ -479,14 +410,11 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 const DEFAULT_PARAMS: McParams = McParams {
     temp0: 0.10776805748978419,
     temp1: 0.00017098824773959434,
-    move_d_max: 59,
     grow_d1_start: 757.0413842816848,
     grow_d1_end: 8.632905527414328,
     grow_d2_start: 1275.2877955712484,
     grow_d2_end: 6.087155403694206,
-    rect_move_weight: 0.0034894679456486492,
     rect_grow_d1_weight: 0.2550967075941691,
-    rect_grow_d2_weight: 0.7587268147916909,
 };
 
 #[cfg(feature = "learn")]

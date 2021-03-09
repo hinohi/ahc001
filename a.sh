@@ -1,5 +1,5 @@
-bin=./target/release/simple_mc
+bin=./target/release/local
 n=$1
-$bin $2 < tools/in/$n.txt > $n.txt && \
+$bin < tools/in/$n.txt > $n.txt && \
     ./target/release/vis tools/in/$n.txt $n.txt
 rm -f $n.txt
