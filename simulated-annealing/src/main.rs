@@ -9,6 +9,7 @@ use rand::{
     RngCore,
 };
 use rand_pcg::Mcg128Xsl64;
+#[cfg(feature = "learn")]
 use serde::Deserialize;
 
 const L: i16 = 10_000;
@@ -309,7 +310,8 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
         .any(|(j, rect)| i != j && new.intersect(rect))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "learn", derive(Deserialize))]
 pub struct McParams {
     temp0: f64,
     temp1: f64,
@@ -483,6 +485,30 @@ fn mc(
     }
 }
 
+const DEFAULT_PARAMS: McParams = McParams {
+    temp0: 0.10776805748978419,
+    temp1: 0.00017098824773959434,
+    move_d_max: 59,
+    grow_d1_start: 757.0413842816848,
+    grow_d1_end: 8.632905527414328,
+    grow_d2_start: 1275.2877955712484,
+    grow_d2_end: 6.087155403694206,
+    rect_move_weight: 0.0034894679456486492,
+    rect_grow_d1_weight: 0.2550967075941691,
+    rect_grow_d2_weight: 0.7587268147916909,
+};
+
+#[cfg(feature = "learn")]
+fn get_params(arg: Option<String>) -> McParams {
+    arg.and_then(|arg| Some(serde_json::de::from_str(&arg).unwrap()))
+        .unwrap_or(DEFAULT_PARAMS)
+}
+
+#[cfg(not(feature = "learn"))]
+fn get_params(_arg: Option<String>) -> McParams {
+    DEFAULT_PARAMS
+}
+
 fn main() {
     let stdin = std::io::stdin();
     let f = stdin.lock();
@@ -510,24 +536,7 @@ fn main() {
         }
     }
 
-    let default_params = McParams {
-        temp0: 0.10776805748978419,
-        temp1: 0.00017098824773959434,
-        move_d_max: 59,
-        grow_d1_start: 757.0413842816848,
-        grow_d1_end: 8.632905527414328,
-        grow_d2_start: 1275.2877955712484,
-        grow_d2_end: 6.087155403694206,
-        rect_move_weight: 0.0034894679456486492,
-        rect_grow_d1_weight: 0.2550967075941691,
-        rect_grow_d2_weight: 0.7587268147916909,
-    };
-    let params = std::env::args()
-        .skip(1)
-        .next()
-        .and_then(|arg| Some(serde_json::de::from_str(&arg).unwrap()))
-        .unwrap_or(default_params);
-
+    let params = get_params(std::env::args().skip(1).next());
     let mut rng = Mcg128Xsl64::new(1);
     let best = mc(params, &mut rng, &rects, &target, &size);
     for rect in best {
