@@ -34,8 +34,26 @@ $ /usr/bin/time ./target/release/local < tools/in/0003.txt > /dev/null
 
 base image: https://gallery.ecr.aws/lambda/provided
 
-## image
+### image
 
 169698630369.dkr.ecr.ap-northeast-1.amazonaws.com/ahc001
 
 * 20210309-155930: f5e0eb7341e81c9c7697d823b387260756b629ac
+
+### deploy
+
+```
+npx cdk deploy --profile=ahc001
+```
+
+### Lambda を直接 invoke するテスト
+
+```
+$ aws lambda invoke --function-name ahc001 --payload $(base64 lambda-test-body.json) test.txt
+{
+    "StatusCode": 200,
+    "ExecutedVersion": "$LATEST"
+}
+$ cat test.txt
+0.9533758564853474%                                                                                                                                                                                                             
+```
