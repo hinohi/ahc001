@@ -333,6 +333,7 @@ fn mc(
         scores.push(s);
     }
 
+    let index_d = Uniform::new(0, rects.len());
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut count = (0, 0);
@@ -343,7 +344,7 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            // eprintln!("{:?}", count);
+            eprintln!("{:?}", count);
             break best;
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
@@ -401,11 +402,12 @@ fn mc(
 
         for _ in 0..1000 {
             count.0 += 1;
-            let i = (rng.next_u32() % rects.len() as u32) as usize;
+            let i = index_d.sample(rng);
+            let rect = unsafe { rects.get_unchecked(i) };
             let new = if prob_d.sample(rng) < params.rect_grow_d1_weight {
-                rect_grow_d1(rng, &rects[i])
+                rect_grow_d1(rng, &rect)
             } else {
-                rect_grow_d2(rng, &rects[i])
+                rect_grow_d2(rng, &rect)
             };
             if !new.contain(target[i].0, target[i].1) {
                 continue;
@@ -413,13 +415,13 @@ fn mc(
             let new_score = new.score(size[i]);
             let score_diff = new_score - scores[i];
             if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                if let Some(grow) = rects[i].grow_rect(&new) {
+                if let Some(grow) = rect.grow_rect(&new) {
                     if qtree.intersect(&grow, i, &rects) {
                         continue;
                     }
                 }
                 count.1 += 1;
-                qtree.update(&new, &rects[i], i);
+                qtree.update(&new, &rect, i);
                 scores[i] = new_score;
                 rects[i] = new;
                 score += score_diff;
