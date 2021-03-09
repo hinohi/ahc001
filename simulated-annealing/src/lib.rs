@@ -145,6 +145,67 @@ impl QTree {
         false
     }
 
+    fn push_in_one_grid(
+        &self,
+        gid: u8,
+        grow: &Rect,
+        dir: PushDirection,
+        i: usize,
+        rects: &[Rect],
+        pushed: &mut Vec<(usize, Rect)>,
+    ) {
+        for &j in self.grid[gid as usize].iter() {
+            if i == j {
+                continue;
+            }
+            if grow.intersect(&rects[j]) {
+                pushed.push((j, rects[j].push_by(grow, dir)));
+            }
+        }
+    }
+
+    fn push_parent(
+        &self,
+        mut gid: u8,
+        grow: &Rect,
+        dir: PushDirection,
+        i: usize,
+        rects: &[Rect],
+        pushed: &mut Vec<(usize, Rect)>,
+    ) {
+        loop {
+            self.push_in_one_grid(gid, grow, dir, i, rects, pushed);
+            if gid == 0 {
+                break;
+            }
+            gid = parent_gid(gid);
+        }
+    }
+
+    fn push_children(
+        &self,
+        gid: u8,
+        grow: &Rect,
+        dir: PushDirection,
+        i: usize,
+        rects: &[Rect],
+        pushed: &mut Vec<(usize, Rect)>,
+    ) {
+        if gid >= LAYER2_OFFSET {
+            return;
+        }
+        let mut queue = VecDeque::new();
+        queue.push_front(children_gid_range(gid));
+        while let Some(children) = queue.pop_front() {
+            for c in children {
+                self.push_in_one_grid(c, grow, dir, i, rects, pushed);
+                if c < LAYER2_OFFSET {
+                    queue.push_back(children_gid_range(c));
+                }
+            }
+        }
+    }
+
     pub fn push_by(
         &self,
         grow: &Rect,
@@ -153,13 +214,19 @@ impl QTree {
         rects: &[Rect],
         pushed: &mut Vec<(usize, Rect)>,
     ) {
-        for (j, rect) in rects.iter().enumerate() {
-            if i == j {
-                continue;
+        let gid = get_gid(grow);
+        if gid == 0 {
+            for (j, rect) in rects.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                if grow.intersect(rect) {
+                    pushed.push((j, rect.push_by(grow, dir)));
+                }
             }
-            if grow.intersect(rect) {
-                pushed.push((j, rect.push_by(grow, dir)));
-            }
+        } else {
+            self.push_parent(gid, grow, dir, i, rects, pushed);
+            self.push_children(gid, grow, dir, i, rects, pushed);
         }
     }
 
@@ -212,7 +279,7 @@ impl Rect {
 
     /// (x + 0.5, y + 0.5) を含む矩形とぶつからない
     pub fn not_contain(&self, x: i16, y: i16) -> bool {
-        x < self.x1 && self.x2 < x && y < self.y1 && self.y2 < y
+        (x < self.x1 || self.x2 < x) && (y < self.y1 || self.y2 < y)
     }
 
     pub fn score(&self, r: i32) -> f64 {
