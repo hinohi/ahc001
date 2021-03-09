@@ -2,7 +2,7 @@ use std::env;
 
 use anyhow::{Context, Result};
 use proconio::source::once::OnceSource;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use simulated_annealing::{parse_source, run};
 use tokio::io::AsyncReadExt;
@@ -32,12 +32,19 @@ async fn response(url_base: &str, aws_request_id: &str, body: String) -> Result<
 
 #[derive(Deserialize)]
 struct Body {
+    message_id: String,
     n: u32,
     seed: u32,
     arg: String,
 }
 
-async fn calc(data: &str) -> Result<f64> {
+#[derive(Serialize)]
+struct Response {
+    message_id: String,
+    score: f64,
+}
+
+async fn calc(data: &str) -> Result<Response> {
     let body: Body = serde_json::from_str(data)?;
     let path = format!("/in2/{:03}/{:04}.txt", body.n, body.seed);
     let mut buf = String::new();
@@ -48,8 +55,11 @@ async fn calc(data: &str) -> Result<f64> {
     let source = OnceSource::new(buf.as_bytes());
     let input = parse_source(source);
 
-    let (best_score, _) = run(input, Some(body.arg));
-    Ok(best_score)
+    let (score, _) = run(input, Some(body.arg));
+    Ok(Response {
+        message_id: body.message_id,
+        score,
+    })
 }
 
 #[tokio::main]
@@ -58,7 +68,7 @@ async fn main() -> Result<()> {
     let url_base = format!("http://{}", aws_lambda_runtime_api);
     loop {
         let (aws_request_id, data) = next_invocation(&url_base).await?;
-        let score = calc(&data).await?;
-        response(&url_base, &aws_request_id, format!("{}", score)).await?;
+        let r = calc(&data).await?;
+        response(&url_base, &aws_request_id, serde_json::to_string(&r)?).await?;
     }
 }
