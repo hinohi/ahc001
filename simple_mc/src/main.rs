@@ -213,55 +213,39 @@ impl Rect {
         }
     }
 
-    pub fn grow_x1(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || self.x2 <= self.x1 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1 + d,
-                x2: self.x2,
-                y1: self.y1,
-                y2: self.y2,
-            })
+    pub fn grow_x1(&self, d: i16) -> Rect {
+        Rect {
+            x1: clip(self.x1 + d, 0, self.x2 - 1),
+            x2: self.x2,
+            y1: self.y1,
+            y2: self.y2,
         }
     }
 
-    pub fn grow_x2(&self, d: i16) -> Option<Rect> {
-        if self.x2 + d <= self.x1 || L <= self.x2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2 + d,
-                y1: self.y1,
-                y2: self.y2,
-            })
+    pub fn grow_x2(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: clip(self.x2 + d, self.x1 + 1, L - 1),
+            y1: self.y1,
+            y2: self.y2,
         }
     }
 
-    pub fn grow_y1(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || self.y2 <= self.y1 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1 + d,
-                y2: self.y2,
-            })
+    pub fn grow_y1(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: self.x2,
+            y1: clip(self.y1 + d, 0, self.y2 - 1),
+            y2: self.y2,
         }
     }
 
-    pub fn grow_y2(&self, d: i16) -> Option<Rect> {
-        if self.y2 + d <= self.y1 || L <= self.y2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1,
-                y2: self.y2 + d,
-            })
+    pub fn grow_y2(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: self.x2,
+            y1: self.y1,
+            y2: clip(self.y2 + d, self.y1 + 1, L - 1),
         }
     }
 
@@ -302,6 +286,17 @@ impl Rect {
     }
 }
 
+#[inline]
+fn clip(v: i16, min: i16, max: i16) -> i16 {
+    if v < min {
+        min
+    } else if max < v {
+        max
+    } else {
+        v
+    }
+}
+
 fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
     rects
         .iter()
@@ -313,14 +308,11 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
 pub struct McParams {
     temp0: f64,
     temp1: f64,
-    move_d_max: i16,
     grow_d1_start: f64,
     grow_d1_end: f64,
     grow_d2_start: f64,
     grow_d2_end: f64,
-    rect_move_weight: f64,
     rect_grow_d1_weight: f64,
-    rect_grow_d2_weight: f64,
 }
 
 fn mc(
@@ -341,41 +333,9 @@ fn mc(
         scores.push(s);
     }
 
-    #[derive(Debug, Copy, Clone)]
-    enum MoveType {
-        Move,
-        Grow1,
-        Grow2,
-    }
-
-    let weight = {
-        let s = params.rect_move_weight + params.rect_grow_d1_weight + params.rect_grow_d2_weight;
-        let mut weight = [MoveType::Move; 128];
-        let a = (params.rect_move_weight * weight.len() as f64 / s).ceil() as usize;
-        let b = a + (params.rect_grow_d1_weight * weight.len() as f64 / s).ceil() as usize;
-        let c = b + (params.rect_grow_d2_weight * weight.len() as f64 / s).ceil() as usize;
-        for i in 0..a {
-            if i < weight.len() {
-                weight[i] = MoveType::Move;
-            }
-        }
-        for i in a..b {
-            if i < weight.len() {
-                weight[i] = MoveType::Grow1;
-            }
-        }
-        for i in b..c {
-            if i < weight.len() {
-                weight[i] = MoveType::Grow2;
-            }
-        }
-        weight
-    };
-
-    let move_d = Uniform::new(1, params.move_d_max + 1);
     let prob_d = Uniform::new(0.0, 1.0);
 
-    let mut count = (0, 0, 0);
+    let mut count = (0, 0);
     let mut qtree = QTree::new(rects);
     let mut rects = rects.to_vec();
     let mut best = rects.clone();
@@ -383,7 +343,7 @@ fn mc(
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
-            eprintln!("{:?}", count);
+            // eprintln!("{:?}", count);
             break best;
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
@@ -391,20 +351,13 @@ fn mc(
 
         let grow_d1 = Uniform::new(
             1,
-            (params.grow_d1_start * (1.0 - t) + params.grow_d1_end * t) as i16 + 2,
+            (params.grow_d1_start.powf(1.0 - t) * params.grow_d1_end.powf(t)) as i16 + 2,
         );
         let grow_d2 = Uniform::new(
             1,
-            (params.grow_d2_start * (1.0 - t) + params.grow_d2_end * t) as i16 + 2,
+            (params.grow_d2_start.powf(1.0 - t) * params.grow_d2_end.powf(t)) as i16 + 2,
         );
 
-        let rect_move = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 4 {
-            0 => rect.move_x(move_d.sample(rng)),
-            1 => rect.move_x(-move_d.sample(rng)),
-            2 => rect.move_y(move_d.sample(rng)),
-            3 => rect.move_y(-move_d.sample(rng)),
-            _ => unreachable!(),
-        };
         let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
             0 => rect.grow_x1(grow_d1.sample(rng)),
             1 => rect.grow_x1(-grow_d1.sample(rng)),
@@ -419,28 +372,28 @@ fn mc(
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| match rng.next_u32() % 8 {
             0 => rect
                 .grow_x1(grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
+                .grow_y1(-grow_d2.sample(rng)),
             1 => rect
                 .grow_x1(-grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
+                .grow_y1(grow_d2.sample(rng)),
             2 => rect
                 .grow_x1(grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
+                .grow_y2(grow_d2.sample(rng)),
             3 => rect
                 .grow_x1(-grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
+                .grow_y2(-grow_d2.sample(rng)),
             4 => rect
                 .grow_x2(grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
+                .grow_y1(grow_d2.sample(rng)),
             5 => rect
                 .grow_x2(-grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
+                .grow_y1(-grow_d2.sample(rng)),
             6 => rect
                 .grow_x2(grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
+                .grow_y2(-grow_d2.sample(rng)),
             7 => rect
                 .grow_x2(-grow_d2.sample(rng))
-                .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
+                .grow_y2(grow_d2.sample(rng)),
             _ => unreachable!(),
         };
 
@@ -449,34 +402,30 @@ fn mc(
         for _ in 0..1000 {
             count.0 += 1;
             let i = (rng.next_u32() % rects.len() as u32) as usize;
-            let w = weight[(rng.next_u32() % weight.len() as u32) as usize];
-            let new = match w {
-                MoveType::Move => rect_move(rng, &rects[i]),
-                MoveType::Grow1 => rect_grow_d1(rng, &rects[i]),
-                MoveType::Grow2 => rect_grow_d2(rng, &rects[i]),
+            let new = if prob_d.sample(rng) < params.rect_grow_d1_weight {
+                rect_grow_d1(rng, &rects[i])
+            } else {
+                rect_grow_d2(rng, &rects[i])
             };
-            if let Some(new) = new {
-                count.1 += 1;
-                if !new.contain(target[i].0, target[i].1) {
-                    continue;
+            if !new.contain(target[i].0, target[i].1) {
+                continue;
+            }
+            let new_score = new.score(size[i]);
+            let score_diff = new_score - scores[i];
+            if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
+                if let Some(grow) = rects[i].grow_rect(&new) {
+                    if qtree.intersect(&grow, i, &rects) {
+                        continue;
+                    }
                 }
-                let new_score = new.score(size[i]);
-                let score_diff = new_score - scores[i];
-                if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                    if let Some(grow) = rects[i].grow_rect(&new) {
-                        if qtree.intersect(&grow, i, &rects) {
-                            continue;
-                        }
-                    }
-                    count.2 += 1;
-                    qtree.update(&new, &rects[i], i);
-                    scores[i] = new_score;
-                    rects[i] = new;
-                    score += score_diff;
-                    if score > best_score {
-                        best_score = score;
-                        best = rects.clone();
-                    }
+                count.1 += 1;
+                qtree.update(&new, &rects[i], i);
+                scores[i] = new_score;
+                rects[i] = new;
+                score += score_diff;
+                if score > best_score {
+                    best_score = score;
+                    best = rects.clone();
                 }
             }
         }
@@ -511,16 +460,13 @@ fn main() {
     }
 
     let default_params = McParams {
-        temp0: 0.10776805748978419,
-        temp1: 0.00017098824773959434,
-        move_d_max: 59,
-        grow_d1_start: 757.0413842816848,
-        grow_d1_end: 8.632905527414328,
-        grow_d2_start: 1275.2877955712484,
-        grow_d2_end: 6.087155403694206,
-        rect_move_weight: 0.0034894679456486492,
-        rect_grow_d1_weight: 0.2550967075941691,
-        rect_grow_d2_weight: 0.7587268147916909,
+        temp0: 0.3299148353327332,
+        temp1: 2.5034707133439624e-05,
+        grow_d1_start: 258.0765507552309,
+        grow_d1_end: 2350.897031215518,
+        grow_d2_start: 53.794583070063,
+        grow_d2_end: 18.04499650372468,
+        rect_grow_d1_weight: 0.9275298958037843,
     };
     let params = std::env::args()
         .skip(1)
