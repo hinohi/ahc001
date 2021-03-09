@@ -1,9 +1,10 @@
 use std::{
     collections::VecDeque,
+    io::BufRead,
     time::{Duration, Instant},
 };
 
-use proconio::{input, source::once::OnceSource};
+use proconio::{input, source::Source};
 use rand::{
     distributions::{Distribution, Uniform},
     RngCore,
@@ -325,19 +326,15 @@ pub struct McParams {
     rect_grow_d2_weight: f64,
 }
 
-fn mc(
-    params: McParams,
-    rng: &mut Mcg128Xsl64,
-    rects: &[Rect],
-    target: &[(i16, i16)],
-    size: &[i32],
-) -> Vec<Rect> {
+fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
     let now = Instant::now();
     const TIME_LIMIT: Duration = Duration::from_millis(4950);
 
+    let mut rects = input.rects.to_vec();
+
     let mut score = 0.0;
     let mut scores = Vec::with_capacity(rects.len());
-    for (rect, &r) in rects.iter().zip(size.iter()) {
+    for (rect, &r) in rects.iter().zip(input.sizes.iter()) {
         let s = rect.score(r);
         score += s;
         scores.push(s);
@@ -378,15 +375,14 @@ fn mc(
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut count = (0, 0, 0);
-    let mut qtree = QTree::new(rects);
-    let mut rects = rects.to_vec();
+    let mut qtree = QTree::new(&rects);
     let mut best = rects.clone();
     let mut best_score = score;
     loop {
         let elapsed = now.elapsed();
         if elapsed > TIME_LIMIT {
             eprintln!("{:?}", count);
-            break best;
+            break (best_score, best);
         }
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
@@ -459,10 +455,10 @@ fn mc(
             };
             if let Some(new) = new {
                 count.1 += 1;
-                if !new.contain(target[i].0, target[i].1) {
+                if !new.contain(input.points[i].0, input.points[i].1) {
                     continue;
                 }
-                let new_score = new.score(size[i]);
+                let new_score = new.score(input.sizes[i]);
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
                     if let Some(grow) = rects[i].grow_rect(&new) {
@@ -509,25 +505,26 @@ fn get_params(_arg: Option<String>) -> McParams {
     DEFAULT_PARAMS
 }
 
-fn main() {
-    let stdin = std::io::stdin();
-    let f = stdin.lock();
-    // let f = std::io::BufReader::new(std::fs::File::open("./tools/in/0001.txt").unwrap());
-    let source = OnceSource::new(f);
+pub struct Input {
+    pub rects: Vec<Rect>,
+    pub points: Vec<(i16, i16)>,
+    pub sizes: Vec<i32>,
+}
+
+pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
     input! {
         from source,
         n: usize,
         xyr: [(i16, i16, i32); n],
     }
     let mut rects = Vec::with_capacity(n);
-    let mut target = Vec::with_capacity(n);
-    let mut size = Vec::with_capacity(n);
+    let mut points = Vec::with_capacity(n);
+    let mut sizes = Vec::with_capacity(n);
     for &(x, y, r) in xyr.iter() {
         rects.push(Rect::new(x, x + 1, y, y + 1));
-        target.push((x, y));
-        size.push(r);
+        points.push((x, y));
+        sizes.push(r);
     }
-
     for i in 0..n {
         for j in i + 1..n {
             if rects[i].intersect(&rects[j]) {
@@ -535,13 +532,16 @@ fn main() {
             }
         }
     }
-
-    let params = get_params(std::env::args().skip(1).next());
-    let mut rng = Mcg128Xsl64::new(1);
-    let best = mc(params, &mut rng, &rects, &target, &size);
-    for rect in best {
-        println!("{} {} {} {}", rect.x1, rect.y1, rect.x2, rect.y2);
+    Input {
+        rects,
+        points,
+        sizes,
     }
+}
+
+pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
+    let mut rng = Mcg128Xsl64::new(1);
+    mc(&mut rng, get_params(arg), &input)
 }
 
 #[cfg(test)]

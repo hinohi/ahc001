@@ -11,3 +11,7 @@ members = [
     "simulated-annealing",
     "tools",
 ]
+
+[dependencies]
+proconio = "0.3"
+simulated-annealing = { path = "./simulated-annealing" }
