@@ -501,4 +501,10 @@ mod tests {
         assert_eq!(point_to_leaf_gid(0, 0), 0);
         assert_eq!(point_to_leaf_gid(L - 1, L - 1), 4 * 4 - 1);
     }
+
+    #[test]
+    fn test_children_grid_range() {
+        assert_eq!(children_gid_range(1), 5..9);
+        assert_eq!(children_gid_range(2), 9..13);
+    }
 }
