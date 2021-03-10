@@ -152,16 +152,22 @@ impl QTree {
         dir: PushDirection,
         i: usize,
         rects: &[Rect],
+        points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
-    ) {
+    ) -> bool {
         for &j in self.grid[gid as usize].iter() {
             if i == j {
                 continue;
             }
             if grow.intersect(&rects[j]) {
-                pushed.push((j, rects[j].push_by(grow, dir)));
+                let p = rects[j].push_by(grow, dir);
+                if !p.contain(points[j].0, points[j].1) {
+                    return true;
+                }
+                pushed.push((j, p));
             }
         }
+        false
     }
 
     fn push_parent(
@@ -171,12 +177,15 @@ impl QTree {
         dir: PushDirection,
         i: usize,
         rects: &[Rect],
+        points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
-    ) {
+    ) -> bool {
         loop {
-            self.push_in_one_grid(gid, grow, dir, i, rects, pushed);
+            if self.push_in_one_grid(gid, grow, dir, i, rects, points, pushed) {
+                return true;
+            }
             if gid == 0 {
-                break;
+                return false;
             }
             gid = parent_gid(gid);
         }
@@ -189,21 +198,25 @@ impl QTree {
         dir: PushDirection,
         i: usize,
         rects: &[Rect],
+        points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
-    ) {
+    ) -> bool {
         if gid >= LAYER2_OFFSET {
-            return;
+            return false;
         }
         let mut queue = VecDeque::new();
         queue.push_front(children_gid_range(gid));
         while let Some(children) = queue.pop_front() {
             for c in children {
-                self.push_in_one_grid(c, grow, dir, i, rects, pushed);
+                if self.push_in_one_grid(c, grow, dir, i, rects, points, pushed) {
+                    return true;
+                }
                 if c < LAYER2_OFFSET {
                     queue.push_back(children_gid_range(c));
                 }
             }
         }
+        false
     }
 
     pub fn push_by(
@@ -212,8 +225,9 @@ impl QTree {
         dir: PushDirection,
         i: usize,
         rects: &[Rect],
-        pushed: &mut Vec<(usize, Rect)>,
-    ) {
+        points: &[(i16, i16)],
+    ) -> Option<Vec<(usize, Rect)>> {
+        let mut pushed = Vec::new();
         let gid = get_gid(grow);
         if gid == 0 {
             for (j, rect) in rects.iter().enumerate() {
@@ -221,13 +235,22 @@ impl QTree {
                     continue;
                 }
                 if grow.intersect(rect) {
-                    pushed.push((j, rect.push_by(grow, dir)));
+                    let p = rect.push_by(grow, dir);
+                    if !p.contain(points[j].0, points[j].1) {
+                        return None;
+                    }
+                    pushed.push((j, p));
                 }
             }
         } else {
-            self.push_parent(gid, grow, dir, i, rects, pushed);
-            self.push_children(gid, grow, dir, i, rects, pushed);
+            if self.push_parent(gid, grow, dir, i, rects, points, &mut pushed) {
+                return None;
+            }
+            if self.push_children(gid, grow, dir, i, rects, points, &mut pushed) {
+                return None;
+            }
         }
+        Some(pushed)
     }
 
     pub fn update(&mut self, new: &Rect, old: &Rect, i: usize) {
@@ -279,7 +302,7 @@ impl Rect {
 
     /// (x + 0.5, y + 0.5) を含む矩形とぶつからない
     pub fn not_contain(&self, x: i16, y: i16) -> bool {
-        (x < self.x1 || self.x2 < x) && (y < self.y1 || self.y2 < y)
+        x < self.x1 || self.x2 < x || y < self.y1 || self.y2 < y
     }
 
     pub fn score(&self, r: i32) -> f64 {
@@ -391,12 +414,12 @@ impl Rect {
         match dir {
             PushDirection::X1 => Rect {
                 x1: self.x1,
-                x2: grow.x1 + 1,
+                x2: grow.x1,
                 y1: self.y1,
                 y2: self.y2,
             },
             PushDirection::X2 => Rect {
-                x1: grow.x2 - 1,
+                x1: grow.x2,
                 x2: self.x2,
                 y1: self.y1,
                 y2: self.y2,
@@ -405,12 +428,12 @@ impl Rect {
                 x1: self.x1,
                 x2: self.x2,
                 y1: self.y1,
-                y2: grow.y1 + 1,
+                y2: grow.y1,
             },
             PushDirection::Y2 => Rect {
                 x1: self.x1,
                 x2: self.x2,
-                y1: grow.y2 - 1,
+                y1: grow.y2,
                 y2: self.y2,
             },
         }
@@ -538,33 +561,27 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                         continue;
                     }
                     let (grow, dir) = rect.grow_rect(&new).unwrap();
-                    if input
-                        .points
-                        .iter()
-                        .enumerate()
-                        .any(|(j, &(x, y))| i != j && !grow.not_contain(x, y))
-                    {
-                        continue;
-                    }
-                    let mut pushed = vec![(i, new)];
-                    qtree.push_by(&grow, dir, i, &rects, &mut pushed);
-                    let mut score_diff = 0.0;
-                    let mut new_scores = Vec::with_capacity(pushed.len());
-                    for (j, new) in pushed.iter() {
-                        let new_score = new.score(input.sizes[*j]);
-                        score_diff += new_score - scores[*j];
-                        new_scores.push(new_score);
-                    }
-                    if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                        for ((j, new), new_score) in pushed.into_iter().zip(new_scores) {
-                            qtree.update(&new, &rects[j], j);
-                            scores[j] = new_score;
-                            rects[j] = new;
+                    let pushed = qtree.push_by(&grow, dir, i, &rects, &input.points);
+                    if let Some(mut pushed) = pushed {
+                        pushed.push((i, new));
+                        let mut score_diff = 0.0;
+                        let mut new_scores = Vec::with_capacity(pushed.len());
+                        for (j, new) in pushed.iter() {
+                            let new_score = new.score(input.sizes[*j]);
+                            score_diff += new_score - scores[*j];
+                            new_scores.push(new_score);
                         }
-                        score += score_diff;
-                        if score > best_score {
-                            best_score = score;
-                            best = rects.clone();
+                        if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
+                            for ((j, new), new_score) in pushed.into_iter().zip(new_scores) {
+                                qtree.update(&new, &rects[j], j);
+                                scores[j] = new_score;
+                                rects[j] = new;
+                            }
+                            score += score_diff;
+                            if score > best_score {
+                                best_score = score;
+                                best = rects.clone();
+                            }
                         }
                     }
                 }
