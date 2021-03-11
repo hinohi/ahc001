@@ -40,7 +40,7 @@ fn gen(path: &str, seed: u64, n: usize) -> std::io::Result<()> {
 
 fn main() -> std::io::Result<()> {
     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(1);
-    for n in 50..=250 {
+    for n in 50..=200 {
         std::fs::create_dir(format!("in2/{:03}", n))?;
         for id in 0..100 {
             gen(&format!("in2/{:03}/{:04}.txt", n, id), rng.next_u64(), n)?;
