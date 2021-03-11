@@ -300,11 +300,6 @@ impl Rect {
         self.x1 <= x && x < self.x2 && self.y1 <= y && y < self.y2
     }
 
-    /// (x + 0.5, y + 0.5) を含む矩形とぶつからない
-    pub fn not_contain(&self, x: i16, y: i16) -> bool {
-        x < self.x1 || self.x2 < x || y < self.y1 || self.y2 < y
-    }
-
     pub fn score(&self, r: i32) -> f64 {
         let s = self.size().min(r) as f64 / self.size().max(r) as f64;
         1.0 - (1.0 - s) * (1.0 - s)
