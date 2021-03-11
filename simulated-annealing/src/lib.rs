@@ -94,15 +94,18 @@ impl QTree {
         QTree { grid }
     }
 
-    fn intersect_one_grid(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
-        self.grid[gid as usize]
-            .iter()
-            .any(|&j| i != j && new.intersect(&rects[j]))
+    fn intersect_one_grid(&self, gid: u8, grow: &Rect, rects: &[Rect]) -> bool {
+        unsafe {
+            self.grid
+                .get_unchecked(gid as usize)
+                .iter()
+                .any(|&j| grow.intersect(rects.get_unchecked(j)))
+        }
     }
 
-    pub fn intersect_to_parent(&self, mut gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
+    pub fn intersect_to_parent(&self, mut gid: u8, grow: &Rect, rects: &[Rect]) -> bool {
         loop {
-            if self.intersect_one_grid(gid, new, i, rects) {
+            if self.intersect_one_grid(gid, grow, rects) {
                 return true;
             }
             if gid == 0 {
@@ -112,7 +115,7 @@ impl QTree {
         }
     }
 
-    pub fn intersect_to_children(&self, gid: u8, new: &Rect, i: usize, rects: &[Rect]) -> bool {
+    pub fn intersect_to_children(&self, gid: u8, new: &Rect, rects: &[Rect]) -> bool {
         if gid >= LAYER2_OFFSET {
             return false;
         }
@@ -120,7 +123,7 @@ impl QTree {
         queue.push_front(children_gid_range(gid));
         while let Some(children) = queue.pop_front() {
             for c in children {
-                if self.intersect_one_grid(c, new, i, rects) {
+                if self.intersect_one_grid(c, new, rects) {
                     return true;
                 }
                 if c < LAYER2_OFFSET {
@@ -131,15 +134,15 @@ impl QTree {
         false
     }
 
-    pub fn intersect(&self, new: &Rect, i: usize, rects: &[Rect]) -> bool {
-        let gid = get_gid(new);
+    pub fn intersect(&self, grow: &Rect, rects: &[Rect]) -> bool {
+        let gid = get_gid(grow);
         if gid == 0 {
-            return intersect(new, i, rects);
+            return intersect(grow, rects);
         }
-        if self.intersect_to_parent(gid, new, i, rects) {
+        if self.intersect_to_parent(gid, grow, rects) {
             return true;
         }
-        if self.intersect_to_children(gid, new, i, rects) {
+        if self.intersect_to_children(gid, grow, rects) {
             return true;
         }
         false
@@ -461,11 +464,8 @@ impl Rect {
     }
 }
 
-fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
-    rects
-        .iter()
-        .enumerate()
-        .any(|(j, rect)| i != j && new.intersect(rect))
+fn intersect(new: &Rect, rects: &[Rect]) -> bool {
+    rects.iter().any(|rect| new.intersect(rect))
 }
 
 #[derive(Debug)]
@@ -683,7 +683,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
                     if let Some((grow, _)) = rect.grow_rect(&new) {
-                        if qtree.intersect(&grow, i, &rects) {
+                        if qtree.intersect(&grow, &rects) {
                             count.other_valid -= 1;
                             continue;
                         }
@@ -704,20 +704,20 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 }
 
 const DEFAULT_PARAMS: McParams = McParams {
-    temp0: 0.281810868564634648839190448977541,
-    temp1: 0.00029342425784192465,
-    slide_d_start: 61.0,
-    slide_d_end: 5.0,
-    grow_d1_start: 661.4780032749206,
-    grow_d1_end: 7.211273402804876,
-    grow_d2_start: 1532.4395218778254,
-    grow_d2_end: 3.178973798285788,
-    push_d_start: 0.0,
-    push_d_end: 10.0,
-    rect_grow_d1_weight: 0.1745393427756753,
-    rect_slide_weight: 0.056353565358393205,
-    push_weight_start: 0.0,
-    push_weight_end: 0.01,
+    temp0: 0.38615398776136467,
+    temp1: 0.00028060075598388486,
+    slide_d_start: 529.3667629196551,
+    slide_d_end: 373.40914222805014,
+    grow_d1_start: 1082.4154098146191,
+    grow_d1_end: 267.86998139178905,
+    grow_d2_start: 1361.8315116712424,
+    grow_d2_end: 81.24643884887297,
+    push_d_start: 48.64412968462519,
+    push_d_end: 73.92896003900744,
+    rect_grow_d1_weight: 0.4706187875806971,
+    rect_slide_weight: 0.009042981044568259,
+    push_weight_start: 0.07379669141236704,
+    push_weight_end: 0.03630044979932505,
 };
 
 #[cfg(feature = "learn")]
