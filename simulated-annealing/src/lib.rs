@@ -332,7 +332,7 @@ impl Rect {
     }
 
     pub fn grow_x1(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || self.x2 < self.x1 + d {
+        if self.x1 + d < 0 || self.x2 <= self.x1 + d {
             None
         } else {
             Some(Rect {
@@ -358,7 +358,7 @@ impl Rect {
     }
 
     pub fn grow_y1(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || self.y2 < self.y1 + d {
+        if self.y1 + d < 0 || self.y2 <= self.y1 + d {
             None
         } else {
             Some(Rect {
