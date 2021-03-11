@@ -511,6 +511,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         scores.push(s);
     }
 
+    let index_sample = Uniform::new(0, rects.len());
     let prob_d = Uniform::new(0.0, 1.0);
 
     let mut qtree = QTree::new(&rects);
@@ -586,7 +587,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
-            let i = (rng.next_u32() % rects.len() as u32) as usize;
+            let i = index_sample.sample(rng);
             let rect = rects.get(i).unwrap();
             let rt = size_root[i];
             if prob_d.sample(rng) < push_weight {
