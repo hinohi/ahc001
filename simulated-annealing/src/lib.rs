@@ -308,81 +308,59 @@ impl Rect {
         1.0 - (1.0 - s) * (1.0 - s)
     }
 
-    pub fn slide_x(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || L < self.x2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1 + d,
-                x2: self.x2 + d,
-                y1: self.y1,
-                y2: self.y2,
-            })
+    pub fn slide_x(&self, d: i16) -> Rect {
+        let d = clip(d, -self.x1, L - self.x2);
+        Rect {
+            x1: self.x1 + d,
+            x2: self.x2 + d,
+            y1: self.y1,
+            y2: self.y2,
         }
     }
 
-    pub fn slide_y(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || L < self.y2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1 + d,
-                y2: self.y2 + d,
-            })
+    pub fn slide_y(&self, d: i16) -> Rect {
+        let d = clip(d, -self.y1, L - self.y2);
+        Rect {
+            x1: self.x1,
+            x2: self.x2,
+            y1: self.y1 + d,
+            y2: self.y2 + d,
         }
     }
 
-    pub fn grow_x1(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || self.x2 <= self.x1 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1 + d,
-                x2: self.x2,
-                y1: self.y1,
-                y2: self.y2,
-            })
+    pub fn grow_x1(&self, d: i16) -> Rect {
+        Rect {
+            x1: clip(self.x1 + d, 0, self.x2 - 1),
+            x2: self.x2,
+            y1: self.y1,
+            y2: self.y2,
         }
     }
 
-    pub fn grow_x2(&self, d: i16) -> Option<Rect> {
-        if self.x2 + d <= self.x1 || L < self.x2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2 + d,
-                y1: self.y1,
-                y2: self.y2,
-            })
+    pub fn grow_x2(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: clip(self.x2 + d, self.x1 + 1, L),
+            y1: self.y1,
+            y2: self.y2,
         }
     }
 
-    pub fn grow_y1(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || self.y2 <= self.y1 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1 + d,
-                y2: self.y2,
-            })
+    pub fn grow_y1(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: self.x2,
+            y1: clip(self.y1 + d, 0, self.y2 - 1),
+            y2: self.y2,
         }
     }
 
-    pub fn grow_y2(&self, d: i16) -> Option<Rect> {
-        if self.y2 + d <= self.y1 || L < self.y2 + d {
-            None
-        } else {
-            Some(Rect {
-                x1: self.x1,
-                x2: self.x2,
-                y1: self.y1,
-                y2: self.y2 + d,
-            })
+    pub fn grow_y2(&self, d: i16) -> Rect {
+        Rect {
+            x1: self.x1,
+            x2: self.x2,
+            y1: self.y1,
+            y2: clip(self.y2 + d, self.y1 + 1, L),
         }
     }
 
@@ -466,6 +444,16 @@ impl Rect {
 
 fn intersect(new: &Rect, rects: &[Rect]) -> bool {
     rects.iter().any(|rect| new.intersect(rect))
+}
+
+fn clip(x: i16, min: i16, max: i16) -> i16 {
+    if x < min {
+        min
+    } else if max < x {
+        max
+    } else {
+        x
+    }
 }
 
 #[derive(Debug)]
@@ -573,43 +561,16 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         };
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| {
             let d1 = grow_d2.sample(rng);
-            match rng.next_u32() % 12 {
-                0 => rect
-                    .grow_x1(d1)
-                    .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
-                1 => rect
-                    .grow_x1(-d1)
-                    .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
-                2 => rect
-                    .grow_x1(d1)
-                    .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                3 => rect
-                    .grow_x1(-d1)
-                    .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
-                4 => rect
-                    .grow_x2(d1)
-                    .and_then(|rect| rect.grow_y1(grow_d2.sample(rng))),
-                5 => rect
-                    .grow_x2(-d1)
-                    .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
-                6 => rect
-                    .grow_x2(d1)
-                    .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
-                7 => rect
-                    .grow_x2(-d1)
-                    .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                8 => rect
-                    .grow_x1(d1)
-                    .and_then(|rect| rect.grow_x2(grow_d2.sample(rng))),
-                9 => rect
-                    .grow_x1(-d1)
-                    .and_then(|rect| rect.grow_x2(-grow_d2.sample(rng))),
-                10 => rect
-                    .grow_y1(d1)
-                    .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                11 => rect
-                    .grow_y1(-d1)
-                    .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
+            let d2 = grow_d2.sample(rng);
+            match rng.next_u32() % 8 {
+                0 => rect.grow_x1(d1).grow_y1(-d2),
+                1 => rect.grow_x1(d1).grow_y2(d2),
+                2 => rect.grow_x1(-d1).grow_y1(d2),
+                3 => rect.grow_x1(-d1).grow_y2(-d2),
+                4 => rect.grow_x2(d1).grow_y1(d2),
+                5 => rect.grow_x2(d1).grow_y2(-d2),
+                6 => rect.grow_x2(-d1).grow_y1(-d2),
+                7 => rect.grow_x2(-d1).grow_y2(d2),
                 _ => unreachable!(),
             }
         };
@@ -630,11 +591,13 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                     3 => rect.grow_y2(d),
                     _ => unreachable!(),
                 };
-                if let Some(new) = new {
-                    if !new.contain(input.points[i].0, input.points[i].1) {
+                if !new.contain(input.points[i].0, input.points[i].1) {
+                    continue;
+                }
+                if let Some((grow, dir)) = rect.grow_rect(&new) {
+                    if grow.size() == 0 {
                         continue;
                     }
-                    let (grow, dir) = rect.grow_rect(&new).unwrap();
                     let pushed = qtree.push_by(&grow, dir, i, &rects, &input.points);
                     if let Some(mut pushed) = pushed {
                         count.push_valid += 1;
@@ -674,29 +637,31 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
             } else {
                 rect_grow_d2(rng, rect)
             };
-            if let Some(new) = new {
-                if !new.contain(input.points[i].0, input.points[i].1) {
-                    continue;
+            if !new.contain(input.points[i].0, input.points[i].1) {
+                continue;
+            }
+            count.other_valid += 1;
+            let new_score = new.score(input.sizes[i]);
+            let score_diff = new_score - scores[i];
+            if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
+                if let Some((grow, _)) = rect.grow_rect(&new) {
+                    if grow.size() == 0 {
+                        count.other_valid -= 1;
+                        continue;
+                    }
+                    if qtree.intersect(&grow, &rects) {
+                        count.other_valid -= 1;
+                        continue;
+                    }
                 }
-                count.other_valid += 1;
-                let new_score = new.score(input.sizes[i]);
-                let score_diff = new_score - scores[i];
-                if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
-                    if let Some((grow, _)) = rect.grow_rect(&new) {
-                        if qtree.intersect(&grow, &rects) {
-                            count.other_valid -= 1;
-                            continue;
-                        }
-                    }
-                    count.other_ac += 1;
-                    qtree.update(&new, rect, i);
-                    scores[i] = new_score;
-                    rects[i] = new;
-                    score += score_diff;
-                    if score > best_score {
-                        best_score = score;
-                        best = rects.clone();
-                    }
+                count.other_ac += 1;
+                qtree.update(&new, rect, i);
+                scores[i] = new_score;
+                rects[i] = new;
+                score += score_diff;
+                if score > best_score {
+                    best_score = score;
+                    best = rects.clone();
                 }
             }
         }
