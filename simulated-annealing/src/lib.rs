@@ -14,7 +14,7 @@ use rand_pcg::Mcg128Xsl64;
 use serde::Deserialize;
 
 const L: i16 = 10_000;
-const Q_MIN: i16 = L / 2 / 2;
+const Q_MIN: i16 = L / 2 / 2 + 1;
 const LAYER1_OFFSET: u8 = (4 - 1) / 3;
 const LAYER2_OFFSET: u8 = (4 * 4 - 1) / 3;
 
@@ -307,11 +307,11 @@ impl Rect {
 
     pub fn score(&self, r: i32) -> f64 {
         let s = self.size().min(r) as f64 / self.size().max(r) as f64;
-        s * (2.0 - s)
+        1.0 - (1.0 - s) * (1.0 - s)
     }
 
     pub fn grow_x1(&self, d: i16) -> Option<Rect> {
-        if self.x1 + d < 0 || self.x2 <= self.x1 + d {
+        if self.x1 + d < 0 || self.x2 < self.x1 + d {
             None
         } else {
             Some(Rect {
@@ -324,7 +324,7 @@ impl Rect {
     }
 
     pub fn grow_x2(&self, d: i16) -> Option<Rect> {
-        if self.x2 + d <= self.x1 || L <= self.x2 + d {
+        if self.x2 + d <= self.x1 || L < self.x2 + d {
             None
         } else {
             Some(Rect {
@@ -337,7 +337,7 @@ impl Rect {
     }
 
     pub fn grow_y1(&self, d: i16) -> Option<Rect> {
-        if self.y1 + d < 0 || self.y2 <= self.y1 + d {
+        if self.y1 + d < 0 || self.y2 < self.y1 + d {
             None
         } else {
             Some(Rect {
@@ -350,7 +350,7 @@ impl Rect {
     }
 
     pub fn grow_y2(&self, d: i16) -> Option<Rect> {
-        if self.y2 + d <= self.y1 || L <= self.y2 + d {
+        if self.y2 + d <= self.y1 || L < self.y2 + d {
             None
         } else {
             Some(Rect {
