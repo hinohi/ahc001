@@ -33,7 +33,6 @@ async fn response(url_base: &str, aws_request_id: &str, body: String) -> Result<
 #[derive(Deserialize)]
 struct Body {
     message_id: String,
-    n: u32,
     seed: u32,
     arg: String,
 }
@@ -46,7 +45,7 @@ struct Response {
 
 async fn calc(data: &str) -> Result<Response> {
     let body: Body = serde_json::from_str(data)?;
-    let path = format!("/in2/{:03}/{:04}.txt", body.n, body.seed);
+    let path = format!("/in/{:04}.txt", body.seed);
     let mut buf = String::new();
     tokio::fs::File::open(path)
         .await?

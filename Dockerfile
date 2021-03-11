@@ -20,7 +20,7 @@ RUN cargo build --release --bin=lambda
 ###############
 FROM public.ecr.aws/lambda/provided:al2
 
-COPY tools/in2 /in2
+COPY tools/in /in
 COPY --from=build /app/target/release/lambda ${LAMBDA_RUNTIME_DIR}/bootstrap
 
 CMD ["dummy.name"]
