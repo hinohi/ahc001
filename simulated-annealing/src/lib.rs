@@ -305,6 +305,32 @@ impl Rect {
         1.0 - (1.0 - s) * (1.0 - s)
     }
 
+    pub fn slide_x(&self, d: i16) -> Option<Rect> {
+        if self.x1 + d < 0 || L < self.x2 + d {
+            None
+        } else {
+            Some(Rect {
+                x1: self.x1 + d,
+                x2: self.x2 + d,
+                y1: self.y1,
+                y2: self.y2,
+            })
+        }
+    }
+
+    pub fn slide_y(&self, d: i16) -> Option<Rect> {
+        if self.y1 + d < 0 || L < self.y2 + d {
+            None
+        } else {
+            Some(Rect {
+                x1: self.x1,
+                x2: self.x2,
+                y1: self.y1 + d,
+                y2: self.y2 + d,
+            })
+        }
+    }
+
     pub fn grow_x1(&self, d: i16) -> Option<Rect> {
         if self.x1 + d < 0 || self.x2 < self.x1 + d {
             None
@@ -447,6 +473,8 @@ fn intersect(new: &Rect, i: usize, rects: &[Rect]) -> bool {
 pub struct McParams {
     temp0: f64,
     temp1: f64,
+    slide_d_start: f64,
+    slide_d_end: f64,
     grow_d1_start: f64,
     grow_d1_end: f64,
     grow_d2_start: f64,
@@ -454,6 +482,7 @@ pub struct McParams {
     push_d_start: f64,
     push_d_end: f64,
     rect_grow_d1_weight: f64,
+    rect_slide_weight: f64,
     push_weight_start: f64,
     push_weight_end: f64,
 }
@@ -495,6 +524,10 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
         let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
 
+        let slide_d = Uniform::new(
+            0.0,
+            params.slide_d_start * (1.0 - t) + params.slide_d_end * t,
+        );
         let grow_d1 = Uniform::new(
             0.0,
             params.grow_d1_start * (1.0 - t) + params.grow_d1_end * t,
@@ -506,6 +539,16 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         let push_d = Uniform::new(0.0, params.push_d_start * (1.0 - t) + params.push_d_end * t);
         let push_weight = params.push_weight_start * (1.0 - t) + params.push_weight_end * t;
 
+        let rect_slide = |rng: &mut Mcg128Xsl64, rect: &Rect, rt: f64| {
+            let d = move_d(slide_d.sample(rng), rt);
+            match rng.next_u32() % 4 {
+                0 => rect.slide_x(d),
+                1 => rect.slide_x(-d),
+                2 => rect.slide_y(d),
+                3 => rect.slide_y(-d),
+                _ => unreachable!(),
+            }
+        };
         let rect_grow_d1 = |rng: &mut Mcg128Xsl64, rect: &Rect, rt: f64| {
             let d = move_d(grow_d1.sample(rng), rt);
             match rng.next_u32() % 8 {
@@ -523,7 +566,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect, rt: f64| {
             let d1 = move_d(grow_d2.sample(rng), rt);
             let d2 = move_d(grow_d2.sample(rng), rt);
-            match rng.next_u32() % 8 {
+            match rng.next_u32() % 12 {
                 0 => rect.grow_x1(d1).and_then(|rect| rect.grow_y1(-d2)),
                 1 => rect.grow_x1(-d1).and_then(|rect| rect.grow_y1(d2)),
                 2 => rect.grow_x1(d1).and_then(|rect| rect.grow_y2(d2)),
@@ -532,6 +575,10 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 5 => rect.grow_x2(-d1).and_then(|rect| rect.grow_y1(-d2)),
                 6 => rect.grow_x2(d1).and_then(|rect| rect.grow_y2(-d2)),
                 7 => rect.grow_x2(-d1).and_then(|rect| rect.grow_y2(d2)),
+                8 => rect.grow_x1(d1).and_then(|rect| rect.grow_x2(d2)),
+                9 => rect.grow_x1(-d1).and_then(|rect| rect.grow_x2(-d2)),
+                10 => rect.grow_y1(d1).and_then(|rect| rect.grow_y2(d2)),
+                11 => rect.grow_y1(-d1).and_then(|rect| rect.grow_y2(-d2)),
                 _ => unreachable!(),
             }
         };
@@ -582,8 +629,11 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 }
                 continue;
             }
-            let new = if prob_d.sample(rng) < params.rect_grow_d1_weight {
+            let p = prob_d.sample(rng);
+            let new = if p < params.rect_grow_d1_weight {
                 rect_grow_d1(rng, rect, rt)
+            } else if p < params.rect_grow_d1_weight + params.rect_slide_weight {
+                rect_slide(rng, rect, rt)
             } else {
                 rect_grow_d2(rng, rect, rt)
             };
@@ -616,6 +666,8 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 const DEFAULT_PARAMS: McParams = McParams {
     temp0: 0.2818190448977541,
     temp1: 0.0005460197912326249,
+    slide_d_start: 0.1,
+    slide_d_end: 0.1,
     grow_d1_start: 0.7825301758244264,
     grow_d1_end: 1.1138292342797473,
     grow_d2_start: 0.24067919830933143,
@@ -623,6 +675,7 @@ const DEFAULT_PARAMS: McParams = McParams {
     push_d_start: 0.0731824322819961,
     push_d_end: 0.20810644825672672,
     rect_grow_d1_weight: 0.6165547960425946,
+    rect_slide_weight: 0.05,
     push_weight_start: 0.019207977118053627,
     push_weight_end: 0.18571949309040015,
 };
