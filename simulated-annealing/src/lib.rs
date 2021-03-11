@@ -619,17 +619,17 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 }
 
 const DEFAULT_PARAMS: McParams = McParams {
-    temp0: 0.10776805748978419,
-    temp1: 0.00017098824773959434,
-    grow_d1_start: 4.0413842816848,
-    grow_d1_end: 0.632905527414328,
-    grow_d2_start: 4.2877955712484,
-    grow_d2_end: 0.087155403694206,
-    push_d_start: 2.0,
-    push_d_end: 0.0,
-    rect_grow_d1_weight: 0.2550967075941691,
-    push_weight_start: 0.0,
-    push_weight_end: 0.5,
+    temp0: 0.2818190448977541,
+    temp1: 0.0005460197912326249,
+    grow_d1_start: 0.7825301758244264,
+    grow_d1_end: 1.1138292342797473,
+    grow_d2_start: 0.24067919830933143,
+    grow_d2_end: 3.0994689535300455,
+    push_d_start: 0.0731824322819961,
+    push_d_end: 0.20810644825672672,
+    rect_grow_d1_weight: 0.6165547960425946,
+    push_weight_start: 0.019207977118053627,
+    push_weight_end: 0.18571949309040015,
 };
 
 #[cfg(feature = "learn")]
