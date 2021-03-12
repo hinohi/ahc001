@@ -491,7 +491,7 @@ fn calc_score(rects: &[Rect], sizes: &[i32]) -> (f64, Vec<f64>) {
 
 fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
     let now = Instant::now();
-    let limit = Duration::from_millis(4950 / params.n_try);
+    let limit = Duration::from_millis(4950 / params.n_try - 100);
 
     let mut rects = input.rects.to_vec();
     let (mut score, mut scores) = calc_score(&rects, &input.sizes);
@@ -693,7 +693,7 @@ fn greedy_push_by(input: &Input, rects: &mut [Rect]) -> f64 {
 }
 
 const DEFAULT_PARAMS: McParams = McParams {
-    n_try: 3,
+    n_try: 2,
     temp0: 0.38615398776136467,
     temp1: 0.00028060075598388486,
     slide_d_start: 529.3667629196551,
@@ -752,8 +752,14 @@ pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut best_score = 0.0;
     let mut best = Vec::new();
     for _ in 0..n_try {
-        let (_, mut r) = mc(&mut rng, params.clone(), &input);
+        let (q, mut r) = mc(&mut rng, params.clone(), &input);
+        let now = Instant::now();
         let s = greedy_push_by(&input, &mut r);
+        eprintln!(
+            "{} {}",
+            s - q,
+            now.elapsed().as_nanos() / input.rects.len() as u128
+        );
         if s > best_score {
             best_score = s;
             best = r;
