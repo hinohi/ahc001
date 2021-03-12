@@ -559,7 +559,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
         };
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| {
             let d1 = grow_d2.sample(rng);
-            match rng.next_u32() % 12 {
+            match rng.next_u32() % 8 {
                 0 => rect
                     .grow_x1(d1)
                     .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
@@ -584,18 +584,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 7 => rect
                     .grow_x2(-d1)
                     .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                8 => rect
-                    .grow_x1(d1)
-                    .and_then(|rect| rect.grow_x2(grow_d2.sample(rng))),
-                9 => rect
-                    .grow_x1(-d1)
-                    .and_then(|rect| rect.grow_x2(-grow_d2.sample(rng))),
-                10 => rect
-                    .grow_y1(d1)
-                    .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                11 => rect
-                    .grow_y1(-d1)
-                    .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
                 _ => unreachable!(),
             }
         };
