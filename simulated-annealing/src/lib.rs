@@ -501,9 +501,9 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     #[derive(Debug, Default)]
     struct Count {
         all: u32,
-        other_try: u32,
-        other_valid: u32,
-        other_ac: u32,
+        tried: u32,
+        valid: u32,
+        ac: u32,
     }
 
     let mut count = Count::default();
@@ -514,7 +514,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     loop {
         let elapsed = now.elapsed();
         if elapsed > limit {
-            // eprintln!("{:?}", count);
+            eprintln!("{:?}", count);
             return (best_score / scores.len() as f64, best);
         }
         let t = elapsed.as_secs_f64() / limit.as_secs_f64();
@@ -595,7 +595,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
             let i = index_sample.sample(rng);
             let rect = rects.get(i).unwrap();
 
-            count.other_try += 1;
+            count.tried += 1;
 
             let p = rng.gen::<f64>();
             let new = if p < params.rect_grow_d1_weight {
@@ -609,17 +609,17 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 if !new.contain(input.points[i].0, input.points[i].1) {
                     continue;
                 }
-                count.other_valid += 1;
+                count.valid += 1;
                 let new_score = new.score(input.sizes[i]);
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || rng.gen::<f64>() < (score_diff * beta).exp() {
                     if let Some((grow, _)) = rect.grow_rect(&new) {
                         if qtree.intersect(&grow, &rects) {
-                            count.other_valid -= 1;
+                            count.valid -= 1;
                             continue;
                         }
                     }
-                    count.other_ac += 1;
+                    count.ac += 1;
                     qtree.update(&new, rect, i);
                     scores[i] = new_score;
                     rects[i] = new;
