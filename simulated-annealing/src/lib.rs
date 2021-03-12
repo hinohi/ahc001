@@ -77,7 +77,7 @@ pub fn children_gid_range(gid: u8) -> std::ops::Range<u8> {
 
 #[derive(Debug)]
 pub struct QTree {
-    grid: Vec<Vec<usize>>,
+    grid: Vec<Vec<u8>>,
 }
 
 impl QTree {
@@ -89,7 +89,7 @@ impl QTree {
         }
         for (i, rect) in rects.iter().enumerate() {
             let gid = get_gid(rect) as usize;
-            grid[gid].push(i);
+            grid[gid].push(i as u8);
         }
         QTree { grid }
     }
@@ -99,7 +99,7 @@ impl QTree {
             self.grid
                 .get_unchecked(gid as usize)
                 .iter()
-                .any(|&j| grow.intersect(rects.get_unchecked(j)))
+                .any(|&j| grow.intersect(rects.get_unchecked(j as usize)))
         }
     }
 
@@ -153,15 +153,12 @@ impl QTree {
         gid: u8,
         grow: &Rect,
         dir: PushDirection,
-        i: usize,
         rects: &[Rect],
         points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
     ) -> bool {
         for &j in self.grid[gid as usize].iter() {
-            if i == j {
-                continue;
-            }
+            let j = j as usize;
             if grow.intersect(&rects[j]) {
                 let p = rects[j].push_by(grow, dir);
                 if !p.contain(points[j].0, points[j].1) {
@@ -178,13 +175,12 @@ impl QTree {
         mut gid: u8,
         grow: &Rect,
         dir: PushDirection,
-        i: usize,
         rects: &[Rect],
         points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
     ) -> bool {
         loop {
-            if self.push_in_one_grid(gid, grow, dir, i, rects, points, pushed) {
+            if self.push_in_one_grid(gid, grow, dir, rects, points, pushed) {
                 return true;
             }
             if gid == 0 {
@@ -199,7 +195,6 @@ impl QTree {
         gid: u8,
         grow: &Rect,
         dir: PushDirection,
-        i: usize,
         rects: &[Rect],
         points: &[(i16, i16)],
         pushed: &mut Vec<(usize, Rect)>,
@@ -211,7 +206,7 @@ impl QTree {
         queue.push_front(children_gid_range(gid));
         while let Some(children) = queue.pop_front() {
             for c in children {
-                if self.push_in_one_grid(c, grow, dir, i, rects, points, pushed) {
+                if self.push_in_one_grid(c, grow, dir, rects, points, pushed) {
                     return true;
                 }
                 if c < LAYER2_OFFSET {
@@ -226,7 +221,6 @@ impl QTree {
         &self,
         grow: &Rect,
         dir: PushDirection,
-        i: usize,
         rects: &[Rect],
         points: &[(i16, i16)],
     ) -> Option<Vec<(usize, Rect)>> {
@@ -234,9 +228,6 @@ impl QTree {
         let gid = get_gid(grow);
         if gid == 0 {
             for (j, rect) in rects.iter().enumerate() {
-                if i == j {
-                    continue;
-                }
                 if grow.intersect(rect) {
                     let p = rect.push_by(grow, dir);
                     if !p.contain(points[j].0, points[j].1) {
@@ -246,10 +237,10 @@ impl QTree {
                 }
             }
         } else {
-            if self.push_parent(gid, grow, dir, i, rects, points, &mut pushed) {
+            if self.push_parent(gid, grow, dir, rects, points, &mut pushed) {
                 return None;
             }
-            if self.push_children(gid, grow, dir, i, rects, points, &mut pushed) {
+            if self.push_children(gid, grow, dir, rects, points, &mut pushed) {
                 return None;
             }
         }
@@ -262,9 +253,12 @@ impl QTree {
         if old_gid == new_gid {
             return;
         }
-        let pos = self.grid[old_gid].iter().position(|j| *j == i).unwrap();
+        let pos = self.grid[old_gid]
+            .iter()
+            .position(|j| *j == i as u8)
+            .unwrap();
         self.grid[old_gid].swap_remove(pos);
-        self.grid[new_gid].push(i);
+        self.grid[new_gid].push(i as u8);
     }
 }
 
@@ -635,7 +629,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                         continue;
                     }
                     let (grow, dir) = rect.grow_rect(&new).unwrap();
-                    let pushed = qtree.push_by(&grow, dir, i, &rects, &input.points);
+                    let pushed = qtree.push_by(&grow, dir, &rects, &input.points);
                     if let Some(mut pushed) = pushed {
                         count.push_valid += 1;
                         pushed.push((i, new));
