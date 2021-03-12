@@ -7,7 +7,7 @@ use std::{
 use proconio::{input, source::Source};
 use rand::{
     distributions::{Distribution, Uniform},
-    RngCore,
+    Rng, RngCore,
 };
 use rand_pcg::Mcg128Xsl64;
 #[cfg(feature = "learn")]
@@ -496,7 +496,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     }
 
     let index_sample = Uniform::new(0, rects.len());
-    let prob_d = Uniform::new(0.0, 1.0);
 
     #[derive(Debug, Default)]
     struct Count {
@@ -614,7 +613,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
             count.all += 1;
             let i = index_sample.sample(rng);
             let rect = rects.get(i).unwrap();
-            if prob_d.sample(rng) < push_weight {
+            if rng.gen::<f64>() < push_weight {
                 count.push_try += 1;
                 let d = push_d.sample(rng);
                 let new = match rng.next_u32() % 4 {
@@ -640,7 +639,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                             score_diff += new_score - scores[*j];
                             new_scores.push(new_score);
                         }
-                        if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
+                        if score_diff >= 0.0 || rng.gen::<f64>() < (score_diff * beta).exp() {
                             count.push_ac += 1;
                             for ((j, new), new_score) in pushed.into_iter().zip(new_scores) {
                                 qtree.update(&new, &rects[j], j);
@@ -660,7 +659,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 
             count.other_try += 1;
 
-            let p = prob_d.sample(rng);
+            let p = rng.gen::<f64>();
             let new = if p < params.rect_grow_d1_weight {
                 rect_grow_d1(rng, rect)
             } else if p < params.rect_grow_d1_weight + params.rect_slide_weight {
@@ -675,7 +674,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
                 count.other_valid += 1;
                 let new_score = new.score(input.sizes[i]);
                 let score_diff = new_score - scores[i];
-                if score_diff >= 0.0 || prob_d.sample(rng) < (score_diff * beta).exp() {
+                if score_diff >= 0.0 || rng.gen::<f64>() < (score_diff * beta).exp() {
                     if let Some((grow, _)) = rect.grow_rect(&new) {
                         if qtree.intersect(&grow, &rects) {
                             count.other_valid -= 1;
