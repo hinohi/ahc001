@@ -2,8 +2,9 @@ import * as cdk from '@aws-cdk/core';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as ecr from '@aws-cdk/aws-ecr';
 import * as sqs from '@aws-cdk/aws-sqs';
-import {Role, ServicePrincipal, ManagedPolicy} from '@aws-cdk/aws-iam';
+import {ManagedPolicy, Role, ServicePrincipal} from '@aws-cdk/aws-iam';
 import {SqsDestination} from '@aws-cdk/aws-lambda-destinations';
+import {RetentionDays} from "@aws-cdk/aws-logs";
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -26,7 +27,7 @@ export class CdkStack extends cdk.Stack {
     const func = new lambda.Function(this, 'lambda', {
       functionName: 'ahc001',
       code: lambda.Code.fromEcrImage(repository, {
-        tag: '20210312-131142',
+        tag: '20210312-141343',
       }),
       role,
       runtime: lambda.Runtime.FROM_IMAGE,
@@ -35,6 +36,7 @@ export class CdkStack extends cdk.Stack {
       onSuccess: new SqsDestination(queue),
       maxEventAge: cdk.Duration.minutes(10),
       retryAttempts: 0,
+      logRetention: RetentionDays.ONE_DAY,
     });
 
     new cdk.CfnOutput(this, 'LambdaArn', {
