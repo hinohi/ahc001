@@ -9,7 +9,7 @@ QUEUE_URL = 'https://sqs.ap-northeast-1.amazonaws.com/169698630369/ahc001-Queue4
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210311-125342-add-slide-uniform-d',
+    study_name=f'20210312-002634-saturate',
     storage=storage_name,
     load_if_exists=True,
 )
