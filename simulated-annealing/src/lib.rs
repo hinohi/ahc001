@@ -462,9 +462,10 @@ fn intersect(new: &Rect, rects: &[Rect]) -> bool {
     rects.iter().any(|rect| new.intersect(rect))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "learn", derive(Deserialize))]
 pub struct McParams {
+    n_try: u64,
     temp0: f64,
     temp1: f64,
     slide_d_start: f64,
@@ -483,7 +484,7 @@ pub struct McParams {
 
 fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
     let now = Instant::now();
-    const TIME_LIMIT: Duration = Duration::from_millis(4950);
+    let limit = Duration::from_millis(4950 / params.n_try);
 
     let mut rects = input.rects.to_vec();
 
@@ -515,11 +516,11 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     let mut best_score = score;
     loop {
         let elapsed = now.elapsed();
-        if elapsed > TIME_LIMIT {
+        if elapsed > limit {
             eprintln!("{:?}", count);
             return (best_score / scores.len() as f64, best);
         }
-        let t = elapsed.as_secs_f64() / TIME_LIMIT.as_secs_f64();
+        let t = elapsed.as_secs_f64() / limit.as_secs_f64();
         let beta = 1.0 / (params.temp0.powf(1.0 - t) * params.temp1.powf(t));
 
         let slide_d = Uniform::new(
@@ -697,6 +698,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 }
 
 const DEFAULT_PARAMS: McParams = McParams {
+    n_try: 3,
     temp0: 0.38615398776136467,
     temp1: 0.00028060075598388486,
     slide_d_start: 529.3667629196551,
@@ -744,13 +746,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
         points.push((x, y));
         sizes.push(r);
     }
-    for i in 0..n {
-        for j in i + 1..n {
-            if rects[i].intersect(&rects[j]) {
-                eprintln!("{} - {} are intersect", i, j);
-            }
-        }
-    }
+
     Input {
         rects,
         points,
@@ -760,7 +756,18 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    mc(&mut rng, get_params(arg), &input)
+    let params = get_params(arg);
+    let n_try = params.n_try;
+    let mut best_score = 0.0;
+    let mut best = Vec::new();
+    for _ in 0..n_try {
+        let (s, r) = mc(&mut rng, params.clone(), &input);
+        if s > best_score {
+            best_score = s;
+            best = r;
+        }
+    }
+    (best_score, best)
 }
 
 #[cfg(test)]
