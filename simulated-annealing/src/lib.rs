@@ -491,7 +491,7 @@ fn calc_score(rects: &[Rect], sizes: &[i32]) -> (f64, Vec<f64>) {
 
 fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
     let now = Instant::now();
-    let limit = Duration::from_millis(4950 / params.n_try - 100);
+    let limit = Duration::from_millis(4950 / params.n_try);
 
     let mut rects = input.rects.to_vec();
     let (mut score, mut scores) = calc_score(&rects, &input.sizes);
@@ -646,52 +646,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     }
 }
 
-fn greedy_push_by(input: &Input, rects: &mut [Rect]) -> f64 {
-    let (_, mut scores) = calc_score(&rects, &input.sizes);
-    let mut qtree = QTree::new(&rects);
-    let mut changed = true;
-    while changed {
-        changed = false;
-        for i in 0..rects.len() {
-            let rect = rects[i].clone();
-            if rect.size() >= input.sizes[i] {
-                continue;
-            }
-            for new in vec![
-                rect.grow_x1(-1),
-                rect.grow_x2(1),
-                rect.grow_y1(-1),
-                rect.grow_y2(1),
-            ]
-            .into_iter()
-            .filter_map(|r| r)
-            {
-                let (grow, dir) = rect.grow_rect(&new).unwrap();
-                let pushed = qtree.push_by(&grow, dir, &rects, &input.points);
-                if let Some(mut pushed) = pushed {
-                    pushed.push((i, new));
-                    let mut score_diff = 0.0;
-                    let mut new_scores = Vec::with_capacity(pushed.len());
-                    for (j, new) in pushed.iter() {
-                        let new_score = new.score(input.sizes[*j]);
-                        score_diff += new_score - scores[*j];
-                        new_scores.push(new_score);
-                    }
-                    if score_diff > 0.0 {
-                        changed = true;
-                        for ((j, new), new_score) in pushed.into_iter().zip(new_scores) {
-                            qtree.update(&new, &rects[j], j);
-                            scores[j] = new_score;
-                            rects[j] = new;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    scores.iter().fold(0.0, |x, y| x + *y) / scores.len() as f64
-}
-
 const DEFAULT_PARAMS: McParams = McParams {
     n_try: 2,
     temp0: 0.38615398776136467,
@@ -752,14 +706,7 @@ pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut best_score = 0.0;
     let mut best = Vec::new();
     for _ in 0..n_try {
-        let (q, mut r) = mc(&mut rng, params.clone(), &input);
-        let now = Instant::now();
-        let s = greedy_push_by(&input, &mut r);
-        eprintln!(
-            "{} {}",
-            s - q,
-            now.elapsed().as_nanos() / input.rects.len() as u128
-        );
+        let (s, r) = mc(&mut rng, params.clone(), &input);
         if s > best_score {
             best_score = s;
             best = r;
