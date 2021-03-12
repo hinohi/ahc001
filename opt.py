@@ -9,7 +9,7 @@ QUEUE_URL = 'https://sqs.ap-northeast-1.amazonaws.com/169698630369/ahc001-Queue4
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210312-002634-saturate',
+    study_name=f'20210312-131142-n-try',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -73,6 +73,7 @@ def run(arg: str) -> float:
 
 
 def objective(trial: optuna.Trial) -> float:
+    n_try = trial.suggest_int('n_try', 1, 10)
     temp0 = trial.suggest_loguniform('temp0', 0.1, 0.5)
     temp1 = trial.suggest_loguniform('temp1', 1e-8, 0.01)
     slide_d_start = trial.suggest_loguniform('slide_d_start', 1.0, 4096.0)
@@ -88,6 +89,7 @@ def objective(trial: optuna.Trial) -> float:
     push_weight_start = trial.suggest_uniform('push_weight_start', 0.0, 0.5)
     push_weight_end = trial.suggest_uniform('push_weight_end', 0.0, 0.5)
     param = json.dumps({
+        'n_try': n_try,
         'temp0': temp0,
         'temp1': temp1,
         'slide_d_start': slide_d_start,

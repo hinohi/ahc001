@@ -11,6 +11,7 @@ WORKDIR /app
 COPY tools tools
 COPY Cargo.* .
 COPY src src
+COPY benches benches
 COPY simulated-annealing simulated-annealing
 
 RUN cargo build --release --bin=lambda
