@@ -635,7 +635,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
 }
 
 const DEFAULT_PARAMS: McParams = McParams {
-    n_try: 2,
+    n_try: 1,
     temp0: 0.38615398776136467,
     temp1: 0.00028060075598388486,
     slide_d_start: 529.3667629196551,

@@ -10,9 +10,13 @@ lambda_client = boto3.client('lambda')
 sqs_client = boto3.client('sqs')
 
 
-def invoke(arg: str = None, *, samples=100) -> dict[str, int]:
+def invoke(arg: str = None, *, samples=None) -> dict[str, int]:
     message_seed = {}
-    for seed in range(samples):
+    if samples is None:
+        samples = range(100)
+    elif isinstance(samples, int):
+        samples = range(samples)
+    for seed in samples:
         message_id = str(uuid.uuid4())
         lambda_client.invoke(
             FunctionName='ahc001',
@@ -58,7 +62,7 @@ def receive(message_seed: dict[str, int]) -> dict[int, float]:
     return scores
 
 
-def sampling(arg: str = None, *, samples=100) -> dict[int, float]:
+def sampling(arg: str = None, *, samples) -> dict[int, float]:
     message_seed = invoke(arg, samples=samples)
     time.sleep(5)
     return receive(message_seed)
