@@ -34,7 +34,7 @@ async fn response(url_base: &str, aws_request_id: &str, body: String) -> Result<
 struct Body {
     message_id: String,
     seed: u32,
-    arg: String,
+    arg: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -54,7 +54,7 @@ async fn calc(data: &str) -> Result<Response> {
     let source = OnceSource::new(buf.as_bytes());
     let input = parse_source(source);
 
-    let (score, _) = run(input, Some(body.arg));
+    let (score, _) = run(input, body.arg);
     Ok(Response {
         message_id: body.message_id,
         score,
