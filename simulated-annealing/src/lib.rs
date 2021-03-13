@@ -312,8 +312,16 @@ pub struct McParams {
     grow_d1_end: f64,
     grow_d2_start: f64,
     grow_d2_end: f64,
-    rect_grow_d1_weight: f64,
-    rect_slide_weight: f64,
+    grow_d3_start: f64,
+    grow_d3_end: f64,
+    weight_slide_start: f64,
+    weight_slide_end: f64,
+    weight_d1_start: f64,
+    weight_d1_end: f64,
+    weight_d2_start: f64,
+    weight_d2_end: f64,
+    weight_d3_start: f64,
+    weight_d3_end: f64,
 }
 
 fn calc_score(rects: &[Rect], sizes: &[i32]) -> (f64, Vec<f64>) {
@@ -369,6 +377,17 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
             1,
             2 + (params.grow_d2_start * (1.0 - t) + params.grow_d2_end * t) as i16,
         );
+        let grow_d3 = Uniform::new(
+            1,
+            2 + (params.grow_d3_start * (1.0 - t) + params.grow_d3_end * t) as i16,
+        );
+        let w_slide = params.weight_slide_start * (1.0 - t) + params.weight_slide_end * t;
+        let w_d1 = params.weight_d1_start * (1.0 - t) + params.weight_d1_end * t;
+        let w_d2 = params.weight_d2_start * (1.0 - t) + params.weight_d2_end * t;
+        let w_d3 = params.weight_d3_start * (1.0 - t) + params.weight_d3_end * t;
+        let p0 = w_slide / (w_slide + w_d1 + w_d2 + w_d3);
+        let p1 = p0 + w_d1 / (w_slide + w_d1 + w_d2 + w_d3);
+        let p2 = p1 + w_d2 / (w_slide + w_d1 + w_d2 + w_d3);
 
         let rect_slide = |rng: &mut Mcg128Xsl64, rect: &Rect| {
             let d = slide_d.sample(rng);
@@ -396,7 +415,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
         };
         let rect_grow_d2 = |rng: &mut Mcg128Xsl64, rect: &Rect| {
             let d1 = grow_d2.sample(rng);
-            match rng.next_u32() % 12 {
+            match rng.next_u32() % 8 {
                 0 => rect
                     .grow_x1(d1)
                     .and_then(|rect| rect.grow_y1(-grow_d2.sample(rng))),
@@ -421,22 +440,27 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
                 7 => rect
                     .grow_x2(-d1)
                     .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                8 => rect
-                    .grow_x1(d1)
-                    .and_then(|rect| rect.grow_x2(grow_d2.sample(rng))),
-                9 => rect
-                    .grow_x1(-d1)
-                    .and_then(|rect| rect.grow_x2(-grow_d2.sample(rng))),
-                10 => rect
-                    .grow_y1(d1)
-                    .and_then(|rect| rect.grow_y2(grow_d2.sample(rng))),
-                11 => rect
-                    .grow_y1(-d1)
-                    .and_then(|rect| rect.grow_y2(-grow_d2.sample(rng))),
                 _ => unreachable!(),
             }
         };
-
+        let rect_grow_d3 = |rng: &mut Mcg128Xsl64, rect: &Rect| {
+            let d1 = grow_d3.sample(rng);
+            match rng.next_u32() % 4 {
+                0 => rect
+                    .grow_x1(d1)
+                    .and_then(|rect| rect.grow_x2(grow_d3.sample(rng))),
+                1 => rect
+                    .grow_x1(-d1)
+                    .and_then(|rect| rect.grow_x2(-grow_d3.sample(rng))),
+                2 => rect
+                    .grow_y1(d1)
+                    .and_then(|rect| rect.grow_y2(grow_d3.sample(rng))),
+                3 => rect
+                    .grow_y1(-d1)
+                    .and_then(|rect| rect.grow_y2(-grow_d3.sample(rng))),
+                _ => unreachable!(),
+            }
+        };
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
@@ -446,12 +470,14 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
             count.tried += 1;
 
             let p = rng.gen::<f64>();
-            let new = if p < params.rect_grow_d1_weight {
-                rect_grow_d1(rng, rect)
-            } else if p < params.rect_grow_d1_weight + params.rect_slide_weight {
+            let new = if p < p0 {
                 rect_slide(rng, rect)
-            } else {
+            } else if p < p1 {
+                rect_grow_d1(rng, rect)
+            } else if p < p2 {
                 rect_grow_d2(rng, rect)
+            } else {
+                rect_grow_d3(rng, rect)
             };
             if let Some(new) = new {
                 if !new.contain(input.points[i].0, input.points[i].1) {
@@ -482,45 +508,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
     }
 }
 
-const FOR_NIGATE_PARAM: McParams = McParams {
-    temp0: 0.1222857377629984,
-    temp1: 0.00035311188416492126,
-    slide_d_start: 1.4763700194810077,
-    slide_d_end: 4.138727434882955,
-    grow_d1_start: 1606.851719160123,
-    grow_d1_end: 2.350712961908435,
-    grow_d2_start: 762.1960227081534,
-    grow_d2_end: 4.885343461944777,
-    rect_grow_d1_weight: 0.12433359238640354,
-    rect_slide_weight: 0.00885727658508357,
-};
-
-const FOR_FUTSU_PARAM: McParams = McParams {
-    temp0: 0.09996841827955155,
-    temp1: 0.00020515904219093535,
-    slide_d_start: 55.08393201346564,
-    slide_d_end: 968.2224859819527,
-    grow_d1_start: 508.59320729798225,
-    grow_d1_end: 25.52086427842702,
-    grow_d2_start: 472.65230374037606,
-    grow_d2_end: 680.4236773802642,
-    rect_grow_d1_weight: 0.39492384849005746,
-    rect_slide_weight: 0.1359459869105575,
-};
-
-const FOR_TOKUI_PARAM: McParams = McParams {
-    temp0: 0.13654395602635513,
-    temp1: 9.5367431640625e-07,
-    slide_d_start: 9.686258109655837,
-    slide_d_end: 172.88705373460817,
-    grow_d1_start: 18.22668355456131,
-    grow_d1_end: 20.463730930813725,
-    grow_d2_start: 804.5045849433345,
-    grow_d2_end: 139.82274619736563,
-    rect_grow_d1_weight: 0.12609632689973294,
-    rect_slide_weight: 0.08983763293074393,
-};
-
 const DEFAULT_PARAMS: McParams = McParams {
     temp0: 0.23753236719777623,
     temp1: 9.5367431640625e-07,
@@ -530,8 +517,16 @@ const DEFAULT_PARAMS: McParams = McParams {
     grow_d1_end: 2.3165079582556958,
     grow_d2_start: 660.2448737846898,
     grow_d2_end: 5.668514832161116,
-    rect_grow_d1_weight: 0.22559709091751728,
-    rect_slide_weight: 0.01014714472684327,
+    grow_d3_start: 660.2448737846898,
+    grow_d3_end: 5.668514832161116,
+    weight_slide_start: 0.0,
+    weight_slide_end: 0.1,
+    weight_d1_start: 1.0,
+    weight_d1_end: 0.1,
+    weight_d2_start: 0.1,
+    weight_d2_end: 0.5,
+    weight_d3_start: 0.0,
+    weight_d3_end: 0.1,
 };
 
 #[cfg(feature = "learn")]
@@ -576,19 +571,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
     let params = get_params(arg);
-    let (s, r) = mc(&mut rng, params.clone(), &input, 500);
-    let (s2, r2) = if s < 0.97 {
-        mc(&mut rng, FOR_NIGATE_PARAM, &input, 4450)
-    } else if s < 0.985 {
-        mc(&mut rng, FOR_FUTSU_PARAM, &input, 4450)
-    } else {
-        mc(&mut rng, FOR_TOKUI_PARAM, &input, 4450)
-    };
-    if s2 < s {
-        (s, r)
-    } else {
-        (s2, r2)
-    }
+    mc(&mut rng, params.clone(), &input, 4970)
 }
 
 #[cfg(test)]
