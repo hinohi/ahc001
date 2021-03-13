@@ -344,22 +344,12 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
 
     let index_sample = Uniform::new(0, rects.len());
 
-    #[derive(Debug, Default)]
-    struct Count {
-        tried: u32,
-        valid: u32,
-        ac: u32,
-    }
-
-    let mut count = Count::default();
-
     let mut qtree = QTree::new(&rects);
     let mut best = rects.clone();
     let mut best_score = score;
     loop {
         let elapsed = now.elapsed();
         if elapsed > limit {
-            eprintln!("{:?}", count);
             return (best_score / scores.len() as f64, best);
         }
         let t = elapsed.as_secs_f64() / limit.as_secs_f64();
@@ -463,11 +453,9 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
         };
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
-        for _ in 0..1000 {
+        for _ in 0..2000 {
             let i = index_sample.sample(rng);
             let rect = rects.get(i).unwrap();
-
-            count.tried += 1;
 
             let p = rng.gen::<f64>();
             let new = if p < p0 {
@@ -483,17 +471,14 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
                 if !new.contain(input.points[i].0, input.points[i].1) {
                     continue;
                 }
-                count.valid += 1;
                 let new_score = new.score(input.sizes[i]);
                 let score_diff = new_score - scores[i];
                 if score_diff >= 0.0 || rng.gen::<f64>() < (score_diff * beta).exp() {
                     if let Some(grow) = rect.grow_rect(&new) {
                         if qtree.intersect(&grow, &rects) {
-                            count.valid -= 1;
                             continue;
                         }
                     }
-                    count.ac += 1;
                     qtree.update(&new, rect, i);
                     scores[i] = new_score;
                     rects[i] = new;
