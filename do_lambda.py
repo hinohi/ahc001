@@ -58,13 +58,13 @@ def receive(message_seed: dict[str, int]) -> dict[int, float]:
             for suc in deleted.get('Successful', []):
                 receipt_handles.pop(suc['Id'], None)
         elif message_seed:
-            time.sleep(3)
+            time.sleep(1)
     return scores
 
 
 def sampling(arg: str = None, *, samples) -> dict[int, float]:
     message_seed = invoke(arg, samples=samples)
-    time.sleep(5)
+    time.sleep(1)
     return receive(message_seed)
 
 
