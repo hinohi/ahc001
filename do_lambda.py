@@ -33,7 +33,7 @@ def invoke(arg: str = None, *, samples=None) -> dict[str, int]:
 
 
 def receive(message_seed: dict[str, int]) -> dict[int, float]:
-    limit = 300
+    limit = 600
     start = time.time()
     scores = {}
     receipt_handles = {}
@@ -64,7 +64,7 @@ def receive(message_seed: dict[str, int]) -> dict[int, float]:
 
 def sampling(arg: str = None, *, samples) -> dict[int, float]:
     message_seed = invoke(arg, samples=samples)
-    time.sleep(1)
+    time.sleep(4)
     return receive(message_seed)
 
 

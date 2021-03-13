@@ -716,7 +716,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    mc(&mut rng, get_params(arg), &input, 500)
+    mc(&mut rng, get_params(arg), &input, 4450)
 }
 
 #[cfg(test)]

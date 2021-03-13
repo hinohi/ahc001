@@ -6,7 +6,7 @@ from do_lambda import sampling
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210313-102720-500ms-judge',
+    study_name=f'20210313-121042-4450ms-nigate',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -15,7 +15,7 @@ study = optuna.create_study(
 @cache
 def get_nigate_samples() -> list[int]:
     samples = []
-    for line in open('scores.txt'):
+    for line in open('scores_500ms.txt'):
         seed, score = line.split()
         samples.append([float(score), int(seed)])
     samples.sort()
@@ -64,7 +64,7 @@ def objective(trial: optuna.Trial) -> float:
         'rect_grow_d1_weight': rect_grow_d1_weight,
         'rect_slide_weight': rect_slide_weight,
     }, indent=None, separators=(',', ':'))
-    scores = sampling(param, samples=300)
+    scores = sampling(param, samples=get_nigate_samples())
     return 1.0 - sum(scores.values()) / len(scores)
 
 
