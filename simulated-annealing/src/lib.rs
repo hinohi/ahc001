@@ -637,16 +637,16 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
 // };
 //
 // const FOR_FUTSU_PARAM: McParams = McParams {
-//     temp0: 0.35509891828924367,
+//     temp0: 0.18927858198969458,
 //     temp1: 9.5367431640625e-07,
-//     slide_d_start: 265.08009483681815,
-//     slide_d_end: 22.038890308929503,
-//     grow_d1_start: 624.3224449824461,
-//     grow_d1_end: 3.44187622623260134,
-//     grow_d2_start: 17.046627870003714,
-//     grow_d2_end: 170.85435309175918,
-//     rect_grow_d1_weight: 0.7724869554305501,
-//     rect_slide_weight: 0.06434703895540622,
+//     slide_d_start: 35.21092060081539,
+//     slide_d_end: 121.44392409411844,
+//     grow_d1_start: 154.88539110155716,
+//     grow_d1_end: 17.4471451329839,
+//     grow_d2_start: 753.5255791142383,
+//     grow_d2_end: 8.741819976327442,
+//     rect_grow_d1_weight: 0.04545771238160362,
+//     rect_slide_weight: 0.038092569574412156,
 // };
 //
 // const FOR_TOKUI_PARAM: McParams = McParams {
