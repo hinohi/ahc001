@@ -624,16 +624,16 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
 }
 
 // const FOR_NIGATE_PARAM: McParams = McParams {
-//     temp0: 0.433354411088387,
+//     temp0: 0.13324652487736757,
 //     temp1: 9.5367431640625e-07,
-//     slide_d_start: 250.5903267072716,
-//     slide_d_end: 2.840762754583838,
-//     grow_d1_start: 1027.3826819512265,
-//     grow_d1_end: 18.498773169976594,
-//     grow_d2_start: 400.83243234821305,
-//     grow_d2_end: 1.8706891858113546,
-//     rect_grow_d1_weight: 0.3753172948438983,
-//     rect_slide_weight: 0.19026513295873007,
+//     slide_d_start: 290.1962623639855,
+//     slide_d_end: 287.97007642989183,
+//     grow_d1_start: 59.77597973228357,
+//     grow_d1_end: 19.737476279138175,
+//     grow_d2_start: 762.1960227081534,
+//     grow_d2_end: 4.885343461944777,
+//     rect_grow_d1_weight: 0.016618052686297954,
+//     rect_slide_weight: 0.010906731088955506,
 // };
 //
 // const FOR_FUTSU_PARAM: McParams = McParams {
