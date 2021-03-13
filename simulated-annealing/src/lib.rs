@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     io::BufRead,
     time::{Duration, Instant},
 };
@@ -115,23 +114,11 @@ impl QTree {
         }
     }
 
-    pub fn intersect_to_children(&self, gid: u8, new: &Rect, rects: &[Rect]) -> bool {
+    pub fn intersect_to_children(&self, gid: u8, grow: &Rect, rects: &[Rect]) -> bool {
         if gid >= LAYER2_OFFSET {
             return false;
         }
-        let mut queue = VecDeque::new();
-        queue.push_front(children_gid_range(gid));
-        while let Some(children) = queue.pop_front() {
-            for c in children {
-                if self.intersect_one_grid(c, new, rects) {
-                    return true;
-                }
-                if c < LAYER2_OFFSET {
-                    queue.push_back(children_gid_range(c));
-                }
-            }
-        }
-        false
+        children_gid_range(gid).any(|c| self.intersect_one_grid(c, grow, rects))
     }
 
     pub fn intersect(&self, grow: &Rect, rects: &[Rect]) -> bool {
@@ -202,16 +189,9 @@ impl QTree {
         if gid >= LAYER2_OFFSET {
             return false;
         }
-        let mut queue = VecDeque::new();
-        queue.push_front(children_gid_range(gid));
-        while let Some(children) = queue.pop_front() {
-            for c in children {
-                if self.push_in_one_grid(c, grow, dir, rects, points, pushed) {
-                    return true;
-                }
-                if c < LAYER2_OFFSET {
-                    queue.push_back(children_gid_range(c));
-                }
+        for c in children_gid_range(gid) {
+            if self.push_in_one_grid(c, grow, dir, rects, points, pushed) {
+                return true;
             }
         }
         false
@@ -512,7 +492,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
     loop {
         let elapsed = now.elapsed();
         if elapsed > limit {
-            // eprintln!("{:?}", count);
+            eprintln!("{:?}", count);
             return (best_score / scores.len() as f64, best);
         }
         let t = elapsed.as_secs_f64() / limit.as_secs_f64();
@@ -736,7 +716,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    mc(&mut rng, get_params(arg), &input, 500)
+    mc(&mut rng, get_params(arg), &input, 1000)
 }
 
 #[cfg(test)]
