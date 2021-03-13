@@ -499,7 +499,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
 
     #[derive(Debug, Default)]
     struct Count {
-        all: u32,
         tried: u32,
         valid: u32,
         ac: u32,
@@ -513,7 +512,7 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
     loop {
         let elapsed = now.elapsed();
         if elapsed > limit {
-            eprintln!("{:?}", count);
+            // eprintln!("{:?}", count);
             return (best_score / scores.len() as f64, best);
         }
         let t = elapsed.as_secs_f64() / limit.as_secs_f64();
@@ -602,7 +601,6 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
         score = scores.iter().fold(0.0, |x, y| x + *y);
 
         for _ in 0..1000 {
-            count.all += 1;
             let i = index_sample.sample(rng);
             let rect = rects.get(i).unwrap();
 
@@ -738,7 +736,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    mc(&mut rng, get_params(arg), &input, 4950)
+    mc(&mut rng, get_params(arg), &input, 500)
 }
 
 #[cfg(test)]
