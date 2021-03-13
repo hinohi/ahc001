@@ -8,27 +8,42 @@ https://github.com/rust-lang-ja/atcoder-rust-resources/wiki/2020-Update
 
 ### 実行速度
 
+`in/0001.txt` をインプットに、limit=1000ms で。
+
 手元
 
-```console
-$ /usr/bin/time ./target/release/local < tools/in/0000.txt > /dev/null
-        0.45 real         0.45 user         0.00 sys
-$ /usr/bin/time ./target/release/local < tools/in/0001.txt > /dev/null
-        0.48 real         0.48 user         0.00 sys
-$ /usr/bin/time ./target/release/local < tools/in/0002.txt > /dev/null
-        0.50 real         0.49 user         0.00 sys
-$ /usr/bin/time ./target/release/local < tools/in/0003.txt > /dev/null
-        0.49 real         0.49 user         0.00 sys
+```
+$ ./target/release/local > /dev/null
+Count { all: 23393000, tried: 23393000, valid: 12532383, ac: 900411 }
 ```
 
-提出
+AtCoder コードテスト
 
-```text
-提出日時	問題	ユーザ	言語	得点	コード長	結果	実行時間	メモリ	
-2021-03-09 13:16:08	A - AtCoder Ad	daiju	Rust (1.42.0)	49057888001	17308 Byte		860 ms	3228 KB	詳細
+終了コード	0
+実行時間	1006 ms
+メモリ	400 KB
+
+```
+Count { all: 15298000, tried: 15298000, valid: 8324467, ac: 577954 }
 ```
 
-倍とは言わないが、1.7倍くらいは遅い。
+Lambda 1024MB
+
+```
+Count { all: 9059000, tried: 9059000, valid: 4894412, ac: 384759 }
+```
+
+Lambda 1530MB
+
+```
+Count { all: 13655000, tried: 13655000, valid: 7264307, ac: 557677 }
+```
+
+Lambda 1792MB
+
+```
+Count { all: 15408000, tried: 15408000, valid: 8160671, ac: 623972 }
+```
 
 ## Lambda
 

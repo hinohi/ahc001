@@ -26,11 +26,12 @@ export class CdkStack extends cdk.Stack {
     const func = new lambda.Function(this, 'lambda', {
       functionName: 'ahc001',
       code: lambda.Code.fromEcrImage(repository, {
-        tag: '20210312-161221',
+        tag: '20210313-095114',
       }),
       role,
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
+      memorySize: 1792,
       timeout: cdk.Duration.seconds(10),
       onSuccess: new SqsDestination(queue),
       maxEventAge: cdk.Duration.minutes(10),
