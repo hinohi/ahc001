@@ -6,7 +6,7 @@ from do_lambda import sampling
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210313-121042-4450ms-tokui',
+    study_name=f'20210313-121042-4450ms-futsu',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -64,7 +64,7 @@ def objective(trial: optuna.Trial) -> float:
         'rect_grow_d1_weight': rect_grow_d1_weight,
         'rect_slide_weight': rect_slide_weight,
     }, indent=None, separators=(',', ':'))
-    scores = sampling(param, samples=get_tokui_samples())
+    scores = sampling(param, samples=get_futsu_samples())
     return 1.0 - sum(scores.values()) / len(scores)
 
 
@@ -111,5 +111,29 @@ study.enqueue_trial({
     'grow_d2_end': 1.8706891858113546,
     'rect_grow_d1_weight': 0.3753172948438983,
     'rect_slide_weight': 0.19026513295873007,
+})
+study.enqueue_trial({
+    'temp0': 0.13324652487736757,
+    'temp1': 9.5367431640625e-07,
+    'slide_d_start': 290.1962623639855,
+    'slide_d_end': 287.97007642989183,
+    'grow_d1_start': 59.77597973228357,
+    'grow_d1_end': 19.737476279138175,
+    'grow_d2_start': 762.1960227081534,
+    'grow_d2_end': 4.885343461944777,
+    'rect_grow_d1_weight': 0.016618052686297954,
+    'rect_slide_weight': 0.010906731088955506,
+})
+study.enqueue_trial({
+    'temp0': 0.13654395602635513,
+    'temp1': 9.5367431640625e-07,
+    'slide_d_start': 9.686258109655837,
+    'slide_d_end': 172.88705373460817,
+    'grow_d1_start': 18.22668355456131,
+    'grow_d1_end': 20.463730930813725,
+    'grow_d2_start': 804.5045849433345,
+    'grow_d2_end': 139.82274619736563,
+    'rect_grow_d1_weight': 0.12609632689973294,
+    'rect_slide_weight': 0.08983763293074393,
 })
 study.optimize(objective)
