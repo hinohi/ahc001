@@ -6,7 +6,7 @@ from do_lambda import sampling
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210313-121042-4450ms-futsu2',
+    study_name=f'20210313-121042-4450ms-nigate2',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -65,7 +65,7 @@ def objective(trial: optuna.Trial) -> float:
         'rect_grow_d1_weight': rect_grow_d1_weight,
         'rect_slide_weight': rect_slide_weight,
     }, indent=None, separators=(',', ':'))
-    scores = sampling(param, samples=get_futsu_samples())
+    scores = sampling(param, samples=get_nigate_samples())
     return 1.0 - sum(scores.values()) / len(scores)
 
 
