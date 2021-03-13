@@ -465,7 +465,6 @@ fn intersect(new: &Rect, rects: &[Rect]) -> bool {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "learn", derive(Deserialize))]
 pub struct McParams {
-    n_try: u64,
     temp0: f64,
     temp1: f64,
     slide_d_start: f64,
@@ -489,9 +488,9 @@ fn calc_score(rects: &[Rect], sizes: &[i32]) -> (f64, Vec<f64>) {
     (score, scores)
 }
 
-fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>) {
+fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f64, Vec<Rect>) {
     let now = Instant::now();
-    let limit = Duration::from_millis(4950 / params.n_try);
+    let limit = Duration::from_millis(limit);
 
     let mut rects = input.rects.to_vec();
     let (mut score, mut scores) = calc_score(&rects, &input.sizes);
@@ -634,10 +633,48 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input) -> (f64, Vec<Rect>
     }
 }
 
+const FOR_NIGATE_PARAM: McParams = McParams {
+    temp0: 0.433354411088387,
+    temp1: 9.5367431640625e-07,
+    slide_d_start: 250.5903267072716,
+    slide_d_end: 2.840762754583838,
+    grow_d1_start: 1027.3826819512265,
+    grow_d1_end: 18.498773169976594,
+    grow_d2_start: 400.83243234821305,
+    grow_d2_end: 1.8706891858113546,
+    rect_grow_d1_weight: 0.3753172948438983,
+    rect_slide_weight: 0.19026513295873007,
+};
+
+const FOR_FUTSU_PARAM: McParams = McParams {
+    temp0: 0.35509891828924367,
+    temp1: 9.5367431640625e-07,
+    slide_d_start: 265.08009483681815,
+    slide_d_end: 22.038890308929503,
+    grow_d1_start: 624.3224449824461,
+    grow_d1_end: 3.44187622623260134,
+    grow_d2_start: 17.046627870003714,
+    grow_d2_end: 170.85435309175918,
+    rect_grow_d1_weight: 0.7724869554305501,
+    rect_slide_weight: 0.06434703895540622,
+};
+
+const FOR_TOKUI_PARAM: McParams = McParams {
+    temp0: 0.4752020144854761,
+    temp1: 9.5367431640625e-07,
+    slide_d_start: 562.9193544814267,
+    slide_d_end: 26.33332527645415,
+    grow_d1_start: 624.3224449824461,
+    grow_d1_end: 3.44187622623260134,
+    grow_d2_start: 712.9458825147167,
+    grow_d2_end: 2.805987808579374,
+    rect_grow_d1_weight: 0.20405140603454594,
+    rect_slide_weight: 0.059358074889068135,
+};
+
 const DEFAULT_PARAMS: McParams = McParams {
-    n_try: 1,
     temp0: 0.38615398776136467,
-    temp1: 0.00028060075598388486,
+    temp1: 9.5367431640625e-07,
     slide_d_start: 529.3667629196551,
     slide_d_end: 373.40914222805014,
     grow_d1_start: 1082.4154098146191,
@@ -689,18 +726,20 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    let params = get_params(arg);
-    let n_try = params.n_try;
-    let mut best_score = 0.0;
-    let mut best = Vec::new();
-    for _ in 0..n_try {
-        let (s, r) = mc(&mut rng, params.clone(), &input);
-        if s > best_score {
-            best_score = s;
-            best = r;
-        }
+    let (s, r) = mc(&mut rng, DEFAULT_PARAMS, &input, 1000);
+    let (s2, r2) = if s < 0.96 {
+        mc(&mut rng, FOR_NIGATE_PARAM, &input, 3950)
+    } else if s < 0.98 {
+        mc(&mut rng, FOR_FUTSU_PARAM, &input, 3950)
+    } else {
+        mc(&mut rng, FOR_TOKUI_PARAM, &input, 3950)
+    };
+    eprintln!("{} {}", s, s2);
+    if s < s2 {
+        (s2, r2)
+    } else {
+        (s, r)
     }
-    (best_score, best)
 }
 
 #[cfg(test)]

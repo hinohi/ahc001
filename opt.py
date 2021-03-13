@@ -6,7 +6,7 @@ from do_lambda import sampling
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210312-161221-nigate-100-sample',
+    study_name=f'20210312-161221-tokui-100-sample',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -19,6 +19,26 @@ def get_nigate_samples() -> list[int]:
         seed, score = line.split()
         samples.append([float(score), int(seed)])
     samples.sort()
+    return [s[1] for s in samples[:100]]
+
+
+@cache
+def get_futsu_samples() -> list[int]:
+    samples = []
+    for line in open('scores.txt'):
+        seed, score = line.split()
+        samples.append([float(score), int(seed)])
+    samples.sort()
+    return [s[1] for s in samples[450:550]]
+
+
+@cache
+def get_tokui_samples() -> list[int]:
+    samples = []
+    for line in open('scores.txt'):
+        seed, score = line.split()
+        samples.append([float(score), int(seed)])
+    samples.sort(reverse=True)
     return [s[1] for s in samples[:100]]
 
 
@@ -45,7 +65,7 @@ def objective(trial: optuna.Trial) -> float:
         'rect_grow_d1_weight': rect_grow_d1_weight,
         'rect_slide_weight': rect_slide_weight,
     }, indent=None, separators=(',', ':'))
-    scores = sampling(param, samples=get_nigate_samples())
+    scores = sampling(param, samples=get_tokui_samples())
     return 1.0 - sum(scores.values()) / len(scores)
 
 
