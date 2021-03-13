@@ -6,7 +6,7 @@ from do_lambda import sampling
 
 storage_name = 'sqlite:///sa.db'
 study = optuna.create_study(
-    study_name=f'20210313-121042-4450ms-nigate',
+    study_name=f'20210313-121042-4450ms-tokui',
     storage=storage_name,
     load_if_exists=True,
 )
@@ -25,7 +25,7 @@ def get_nigate_samples() -> list[int]:
 @cache
 def get_futsu_samples() -> list[int]:
     samples = []
-    for line in open('scores.txt'):
+    for line in open('scores_500ms.txt'):
         seed, score = line.split()
         samples.append([float(score), int(seed)])
     samples.sort()
@@ -35,7 +35,7 @@ def get_futsu_samples() -> list[int]:
 @cache
 def get_tokui_samples() -> list[int]:
     samples = []
-    for line in open('scores.txt'):
+    for line in open('scores_500ms.txt'):
         seed, score = line.split()
         samples.append([float(score), int(seed)])
     samples.sort(reverse=True)
@@ -43,7 +43,7 @@ def get_tokui_samples() -> list[int]:
 
 
 def objective(trial: optuna.Trial) -> float:
-    temp0 = trial.suggest_uniform('temp0', 0.1, 0.5)
+    temp0 = trial.suggest_uniform('temp0', 0.01, 2.0)
     slide_d_start = trial.suggest_loguniform('slide_d_start', 1.0, 4096.0)
     slide_d_end = trial.suggest_loguniform('slide_d_end', 1.0, 4096.0)
     grow_d1_start = trial.suggest_loguniform('grow_d1_start', 1.0, 4096.0)
@@ -64,7 +64,7 @@ def objective(trial: optuna.Trial) -> float:
         'rect_grow_d1_weight': rect_grow_d1_weight,
         'rect_slide_weight': rect_slide_weight,
     }, indent=None, separators=(',', ':'))
-    scores = sampling(param, samples=get_nigate_samples())
+    scores = sampling(param, samples=get_tokui_samples())
     return 1.0 - sum(scores.values()) / len(scores)
 
 
