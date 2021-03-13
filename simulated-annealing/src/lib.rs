@@ -663,16 +663,16 @@ fn mc(rng: &mut Mcg128Xsl64, params: McParams, input: &Input, limit: u64) -> (f6
 // };
 
 const DEFAULT_PARAMS: McParams = McParams {
-    temp0: 0.38615398776136467,
+    temp0: 0.23753236719777623,
     temp1: 9.5367431640625e-07,
-    slide_d_start: 529.3667629196551,
-    slide_d_end: 373.40914222805014,
-    grow_d1_start: 1082.4154098146191,
-    grow_d1_end: 267.86998139178905,
-    grow_d2_start: 1361.8315116712424,
-    grow_d2_end: 81.24643884887297,
-    rect_grow_d1_weight: 0.4706187875806971,
-    rect_slide_weight: 0.009042981044568259,
+    slide_d_start: 104.08558092176376,
+    slide_d_end: 147.01079075305694,
+    grow_d1_start: 104.39359219777559,
+    grow_d1_end: 2.3165079582556958,
+    grow_d2_start: 660.2448737846898,
+    grow_d2_end: 5.668514832161116,
+    rect_grow_d1_weight: 0.22559709091751728,
+    rect_slide_weight: 0.01014714472684327,
 };
 
 #[cfg(feature = "learn")]
@@ -716,7 +716,7 @@ pub fn parse_source<R: BufRead, S: Source<R>>(source: S) -> Input {
 
 pub fn run(input: Input, arg: Option<String>) -> (f64, Vec<Rect>) {
     let mut rng = Mcg128Xsl64::new(1);
-    mc(&mut rng, get_params(arg), &input, 1000)
+    mc(&mut rng, get_params(arg), &input, 500)
 }
 
 #[cfg(test)]
