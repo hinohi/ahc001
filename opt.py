@@ -55,24 +55,24 @@ def objective(trial: optuna.Trial) -> float:
     return 1.0 - sum(scores.values()) / len(scores)
 
 
-study.enqueue_trial({
-    'temp0': 0.23753236719777623,
-    'temp1': 9.5367431640625e-07,
-    'slide_d_start': 104.08558092176376,
-    'slide_d_end': 147.01079075305694,
-    'grow_d1_start': 104.39359219777559,
-    'grow_d1_end': 2.3165079582556958,
-    'grow_d2_start': 660.2448737846898,
-    'grow_d2_end': 5.668514832161116,
-    'grow_d3_start': 660.2448737846898,
-    'grow_d3_end': 5.668514832161116,
-    'weight_slide_start': 0.0,
-    'weight_slide_end': 0.1,
-    'weight_d1_start': 1.0,
-    'weight_d1_end': 0.1,
-    'weight_d2_start': 0.1,
-    'weight_d2_end': 0.5,
-    'weight_d3_start': 0.0,
-    'weight_d3_end': 0.1,
-})
+# study.enqueue_trial({
+#     'temp0': 0.10868564634648839,
+#     'temp1': 0.00029342425784192465,
+#     'slide_d_start': 60.0,
+#     'slide_d_end': 60.0,
+#     'grow_d1_start': 661.4780032749206,
+#     'grow_d1_end': 7.211273402804876,
+#     'grow_d2_start': 1532.4395218778254,
+#     'grow_d2_end': 3.178973798285788,
+#     'grow_d3_start': 660.2448737846898,
+#     'grow_d3_end': 5.668514832161116,
+#     'weight_slide_start': 0.0625,
+#     'weight_slide_end': 0.0625,
+#     'weight_d1_start': 0.1796875,
+#     'weight_d1_end': 0.1796875,
+#     'weight_d2_start': 0.7578125,
+#     'weight_d2_end': 0.7578125,
+#     'weight_d3_start': 0.0,
+#     'weight_d3_end': 0.0,
+# })
 study.optimize(objective)
